@@ -21,8 +21,17 @@
 !*.emProject
 !*.emSession
 
+# CLion files
+!CMakeLists.txt
+!linker.ld
+!toolchain.cmake
+
 # Folders
 */_build/
 */armgcc/
 */iar/
 */Output/
+CMakeLists.txt
+build/Debug/
+linker.ld
+toolchain.cmake
