@@ -315,8 +315,12 @@ static void conn_params_init(void)
 static void application_timers_start(void)
 {
     uint32_t err_code;
+
     err_code = app_timer_start(m_temperature_timer_id, TIMER_INTERVAL_TEMPERATURE, NULL);
-    APP_ERROR_CHECK(err_code);   
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_start(m_battery_timer_id, TIMER_INTERVAL_BATTERY, NULL);
+    APP_ERROR_CHECK(err_code);
 }
 
 

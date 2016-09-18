@@ -110,6 +110,11 @@ add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
         COMMENT "Building ${HEX_FILE} \nBuilding ${BIN_FILE}"
         )
 
+### Program application onto nRF5
+#add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
+#        COMMAND "JLinkExe upload.jlink"
+#        COMMENT "Programming...\n"
+#        )
 
 ### Program application onto nRF5
 #add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD

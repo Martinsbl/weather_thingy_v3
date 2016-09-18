@@ -96,7 +96,7 @@ void ble_battery_service_init(ble_battery_t * p_battery)
     uint32_t   err_code; // Variable to hold return codes from library and softdevice functions
 
     ble_uuid_t          service_uuid;
-    BLE_UUID_BLE_ASSIGN(service_uuid, BLE_UUID_BATTERY_LEVEL_CHAR);
+    BLE_UUID_BLE_ASSIGN(service_uuid, BLE_UUID_BATTERY_SERVICE);
 
     p_battery->conn_handle = BLE_CONN_HANDLE_INVALID;
 
