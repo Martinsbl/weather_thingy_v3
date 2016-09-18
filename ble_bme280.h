@@ -14,9 +14,9 @@
 #include "ble_date_time.h"
 
 #define BLE_UUID_BASE_UUID              {0x23, 0xD1, 0x13, 0xEF, 0x5F, 0x78, 0x23, 0x15, 0xDE, 0xEF, 0x12, 0x12, 0x00, 0x00, 0x00, 0x00} // 128-bit base UUID
-#define BLE_UUID_BME280_SERVICE_UUID    0xF00D 
+#define BLE_UUID_BME280_SERVICE_UUID    0xF00D
 #define BLE_UUID_HUMIDITY_CHAR          0x01D1
-#define BLE_UUID_PRESSURE_CHAR          0xE55E 
+#define BLE_UUID_PRESSURE_CHAR          0xE55E
 #define BLE_UUID_TEMPERATURE_CHAR       0xEEAE
 
 typedef struct

@@ -73,6 +73,7 @@ set(SOURCE_FILES
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/uart/nrf_drv_uart.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/pstorage/pstorage.c
         bme280.c
+        ble_battery.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/twi_master/nrf_drv_twi.c
         ${SDK_ROOT_FOLDER}/components/libraries/button/app_button.c
         ${SDK_ROOT_FOLDER}/components/libraries/util/app_error.c

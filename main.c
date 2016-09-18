@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <app_util.h>
 
 #include "nordic_common.h"
 #include "nrf.h"
@@ -34,6 +35,7 @@
 #include "SEGGER_RTT.h"
 #include "ble_bme280.h"
 #include "msgs.h"
+#include "ble_battery.h"
 
 #define CENTRAL_LINK_COUNT               0                                          /**< Number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT            1                                          /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -72,12 +74,16 @@ static uint16_t                          m_conn_handle = BLE_CONN_HANDLE_INVALID
 //#define APPLICATION_SIMULATION
 
 #define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
+#define TIMER_INTERVAL_BATTERY      APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
+
 APP_TIMER_DEF(m_temperature_timer_id);
+APP_TIMER_DEF(m_battery_timer_id);
+
 volatile bool print_values = false;
 
 ble_bme280_t m_bme280;
+ble_battery_t m_battery;
 
-// YOUR_JOB: Use UUIDs for service(s) used in your application.
 static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
 
                                    
@@ -179,6 +185,13 @@ void timer_timeout_handler_temperature(void * p_context)
     print_values = true;
 }
 
+
+void timer_timeout_handler_battery(void * p_context)
+{
+    static uint8_t battery_level = 0;
+    ble_battery_level_update(&m_battery, battery_level++);
+}
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -191,7 +204,10 @@ static void timers_init(void)
 
     uint32_t err_code;
     err_code = app_timer_create(&m_temperature_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler_temperature);
-    APP_ERROR_CHECK(err_code); 
+    APP_ERROR_CHECK(err_code);
+
+    err_code = app_timer_create(&m_battery_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler_battery);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -235,6 +251,7 @@ static void gap_params_init(void)
 static void services_init(void)
 {
     ble_bme280_service_init(&m_bme280);
+    ble_battery_service_init(&m_battery);
 }
 
 
@@ -399,6 +416,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     ble_bme280_on_ble_evt(&m_bme280, p_ble_evt);
+    ble_battery_on_ble_evt(&m_battery, p_ble_evt);
 }
 
 
