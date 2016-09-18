@@ -31,7 +31,3 @@
 */armgcc/
 */iar/
 */Output/
-CMakeLists.txt
-build/Debug/
-linker.ld
-toolchain.cmake
