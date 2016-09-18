@@ -1,0 +1,28 @@
+*.*
+*.uvguix.*
+!.gitignore
+
+# C files
+!*.c
+!*.h
+
+# hex files
+!*.hex
+
+# Project files
+!*.uvprojx
+!*.uvoptx
+
+# Various files
+!*.md
+!*.xml
+
+# Segger Studio files
+!*.emProject
+!*.emSession
+
+# Folders
+*/_build/
+*/armgcc/
+*/iar/
+*/Output/
