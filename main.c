@@ -105,7 +105,7 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
-    error_info_t *error_info = (error_info_t*)info;
+    volatile error_info_t *error_info = (error_info_t*)info;
     SEGGER_RTT_printf(0, "\033[1;31m");
     SEGGER_RTT_printf(0, "\nError: 0x%#x\nLine: %d\nFile: %s\n\n", error_info->err_code, error_info->line_num, error_info->p_file_name);
     SEGGER_RTT_printf(0, "\033[0m");
@@ -687,7 +687,7 @@ int main(void)
     // Start execution.
     application_timers_start();
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK(1);
 
     // Enter main loop.
     for (;;)

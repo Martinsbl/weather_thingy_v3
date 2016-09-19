@@ -20,4 +20,4 @@ SECTIONS
 } INSERT AFTER .data;
 
 /* Make sure to update this path to fit your system. */
-INCLUDE "/home/martin/Nordic/SDK11/components/toolchain/gcc/nrf5x_common.ld"
+INCLUDE "/home/martin/nordic/11.0.0/components/toolchain/gcc/nrf5x_common.ld"
