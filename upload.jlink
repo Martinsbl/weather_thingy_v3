@@ -1,6 +1,6 @@
-device nrf51422
-speed 1000
+speed 50000
 if SWD
+device nrf52832_xxAA
 r
 w4 4001e504 2
 w4 4001e50c 1

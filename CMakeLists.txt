@@ -3,17 +3,34 @@ cmake_minimum_required(VERSION 3.6)
 project(blinky C ASM)
 
 ## Define absolute path to your SDK root folder
-set(SDK_ROOT_FOLDER "~/nordic/11.0.0")
+set(SDK_ROOT_FOLDER "~/nordic/SDK11")
 
 ## File includes
-add_definitions(-DNRF_LOG_USES_RTT=1
-        -DBOARD_PCA10040
-        -DSOFTDEVICE_PRESENT
-        -DSWI_DISABLE0
+set(COMMON_DEFINITIONS
         -DNRF52
+        -DSOFTDEVICE_PRESENT
+        -DBOARD_PCA10040
+        -DNRF52_PAN_12
+        -DNRF52_PAN_15
+        -DNRF52_PAN_58
+        -DNRF52_PAN_55
+        -DNRF52_PAN_54
+        -DNRF52_PAN_31
+        -DNRF52_PAN_30
+        -DNRF52_PAN_51
+        -DNRF52_PAN_36
+        -DNRF52_PAN_53
+        -DNRF_LOG_USES_RTT=1
         -DS132
+        -DCONFIG_GPIO_AS_PINRESET
         -DBLE_STACK_SUPPORT_REQD
-        -DDEBUG)
+        -DSWI_DISABLE0
+        -DNRF52_PAN_20
+        -DNRF52_PAN_64
+        -DNRF52_PAN_62
+        -DNRF52_PAN_63)
+
+add_definitions(${COMMON_DEFINITIONS})
 
 ## Include all directories
 include_directories(
@@ -100,10 +117,11 @@ add_executable(${MAIN_TARGET} ${SOURCE_FILES})
 # '-O0' for Optimization level 0.
 # '-Werror' to treat all warnings as error.
 # '-lc -lrdimon -u _printf_float' for printf with floating points.
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3") # <- Add extra project-specific flags for C compiler.
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g3 -lc -lrdimon -u _printf_float") # <- Add extra project-specific flags for C compiler.
 SET(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}") # <- Add extra project-specific flags for ASM compiler.
 
 
+set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex)
 set(HEX_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.hex)
 set(BIN_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.bin)
 add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
@@ -112,32 +130,16 @@ add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
         COMMENT "Building ${HEX_FILE} \nBuilding ${BIN_FILE}"
         )
 
-#set(HEX_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.hex)
-#set(BIN_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.bin)
-#add_custom_command(
-#        TARGET ${MAIN_TARGET} POST_BUILD
-#        COMMAND ${OBJCOPY_COMMAND} -O ihex ${MAIN_TARGET}  ${HEX_FILE}
-#        COMMAND ${OBJCOPY_COMMAND} -O binary ${MAIN_TARGET}  ${BIN_FILE}
-#)
-
-### Create .hex and .bin files after linking project
-#set(HEX_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.hex)
-#set(BIN_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.bin)
-#add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
-#        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}.elf> ${HEX_FILE}
-#        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}.elf> ${BIN_FILE}
-#        COMMENT "Building ${HEX_FILE} \nBuilding ${BIN_FILE}"
-#        )
-
-### Program application onto nRF5
-#add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
-#        COMMAND "JLinkExe upload.jlink"
+set(ARG_FILE ${PROJECT_SOURCE_DIR}/upload.jlink)
+#add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
+#        COMMAND JLinkExe ${ARG_FILE}
+#        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 #        COMMENT "Programming...\n"
 #        )
 
-### Program application onto nRF5
-#add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
-#        COMMAND nrfjprog -e # Erase application region in flash.
-#        COMMAND nrfjprog --program ${HEX_FILE} -r # Program application and reset.
-#        COMMENT "Programming...\n"
-#        )
+
+add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
+        COMMAND ./flash.sh ${PROJECT_SOURCE_DIR} ${HEX_FILE} ${SD_FILE}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        COMMENT "Programming...\n"
+        )

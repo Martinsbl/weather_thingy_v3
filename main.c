@@ -687,14 +687,14 @@ int main(void)
     // Start execution.
     application_timers_start();
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-    APP_ERROR_CHECK(1);
+    APP_ERROR_CHECK(err_code);
 
     // Enter main loop.
     for (;;)
     {
         if(print_values == true)
         {        
-            char buff[40];
+            char buff[75];
             sprintf(buff, "Temp: %0.2f\nHumi: %0.2f\nPres: %0.2f\n\n", (float)temperature_comp/100, (float)humidity_comp/1024, (float)pressure_comp/100);
             SEGGER_RTT_printf(0, buff);
             print_values = false;
