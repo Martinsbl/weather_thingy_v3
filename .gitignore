@@ -23,9 +23,11 @@
 
 # CLion files
 !CMakeLists.txt
-!linker.ld
+!linker_nrf51.ld
+!linker_nrf52.ld
 !toolchain.cmake
 !*.jlink
+!*.sh
 
 # Folders
 */_build/
