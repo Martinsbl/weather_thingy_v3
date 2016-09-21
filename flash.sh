@@ -8,13 +8,14 @@
 # @author Timo Ziegler <timo.ziegler@fu-berlin.de>
 # @author Hauke Petersen <hauke.petersen@fu-berlin.de>
 
-BINDIR=$1
-HEXFILE=$2
-SDFILE=$3
+FLASH_DEVICE=$1
+BINDIR=$2
+HEXFILE=$3
+SDFILE=$4
 
 # setup JLink command file
-echo "device nrf52" >> $BINDIR/burn.seg
-echo "speed 50000" >> $BINDIR/burn.seg
+echo "device $FLASH_DEVICE" >> $BINDIR/burn.seg
+echo "speed 10000" >> $BINDIR/burn.seg
 echo "w4 4001e504 2" >> $BINDIR/burn.seg
 echo "w4 4001e50C 1" >> $BINDIR/burn.seg
 echo "sleep 100" >> $BINDIR/burn.seg

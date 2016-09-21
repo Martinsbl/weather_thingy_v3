@@ -656,6 +656,7 @@ int main(void)
 {
     uint32_t err_code, err;
     bool erase_bonds;
+    buttons_leds_init(&erase_bonds);
 
 #ifdef APPLICATION_SIMULATION
     SEGGER_RTT_printf(0, "\033[2J\033[;HAPPLICATION_SIMULATION Start %s\n\n", __TIME__);
@@ -676,7 +677,6 @@ int main(void)
 
     // Initialize.
     timers_init();
-    buttons_leds_init(&erase_bonds);
     ble_stack_init();
     device_manager_init(erase_bonds);
     gap_params_init();
