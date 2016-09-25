@@ -6,7 +6,7 @@ project(blinky C ASM)
 set(SDK_ROOT_FOLDER "~/nordic/SDK11")
 
 ## Define nRF5x verions
-set(NRF_VERSION NRF52)
+set(NRF_VERSION NRF51)
 
 ## Choose defines based on nRF5 version
 if (NRF_VERSION MATCHES NRF51)
@@ -122,7 +122,9 @@ include_directories(
         ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler
         ${SDK_ROOT_FOLDER}/examples/../bsp
         ${SDK_ROOT_FOLDER}/external/segger_rtt
-        debug)
+        debug
+        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc
+)
 
 
 ## Include all source files
@@ -159,7 +161,8 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/components/libraries/sensorsim/sensorsim.c
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT.c
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT_printf.c
-        ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler/softdevice_handler.c)
+        ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler/softdevice_handler.c
+        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c)
 
 
 set(MAIN_TARGET ${PROJECT_NAME}.out)

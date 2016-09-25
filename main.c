@@ -41,7 +41,7 @@
 #define PERIPHERAL_LINK_COUNT            1                                          /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 
 #define DEVICE_NAME                      "wt"                          /**< Name of device. Will be included in the advertising data. */
-#define APP_ADV_INTERVAL                 350                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 25 ms). */
+#define APP_ADV_INTERVAL                 300                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 25 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS       0                                        /**< The advertising timeout in units of seconds. */
 
 #define APP_TIMER_PRESCALER              0                                          /**< Value of the RTC1 PRESCALER register. */
@@ -80,6 +80,7 @@ APP_TIMER_DEF(m_temperature_timer_id);
 APP_TIMER_DEF(m_battery_timer_id);
 
 volatile bool print_values = false;
+volatile bool update_battery_values = false;
 
 ble_bme280_t m_bme280;
 ble_battery_t m_battery;
@@ -188,8 +189,7 @@ void timer_timeout_handler_temperature(void * p_context)
 
 void timer_timeout_handler_battery(void * p_context)
 {
-    static uint8_t battery_level = 0;
-    ble_battery_level_update(&m_battery, battery_level++);
+    update_battery_values = true;
 }
 
 /**@brief Function for the Timer initialization.
@@ -656,14 +656,23 @@ int main(void)
 {
     uint32_t err_code, err;
     bool erase_bonds;
+
+    // Initialize.
+    timers_init();
     buttons_leds_init(&erase_bonds);
+    ble_stack_init();
+    device_manager_init(erase_bonds);
+    gap_params_init();
+    advertising_init();
+    services_init();
+    conn_params_init();
 
 #ifdef APPLICATION_SIMULATION
     SEGGER_RTT_printf(0, "\033[2J\033[;HAPPLICATION_SIMULATION Start %s\n\n", __TIME__);
 #else
     SEGGER_RTT_printf(0, "\033[2J\033[;HStart %s\n\n", __TIME__);
     twi_init();
-    
+
     err = bme280_init(&twi_instance);
     APP_ERROR_CHECK(err);
 
@@ -673,16 +682,6 @@ int main(void)
     err = bme280_get_calibration_values();
     APP_ERROR_CHECK(err);
 #endif
-
-
-    // Initialize.
-    timers_init();
-    ble_stack_init();
-    device_manager_init(erase_bonds);
-    gap_params_init();
-    advertising_init();
-    services_init();
-    conn_params_init();
 
     // Start execution.
     application_timers_start();
@@ -694,12 +693,17 @@ int main(void)
     {
         if(print_values == true)
         {        
-            char buff[75];
+            char buff[50];
             sprintf(buff, "Temp: %0.2f\nHumi: %0.2f\nPres: %0.2f\n\n", (float)temperature_comp/100, (float)humidity_comp/1024, (float)pressure_comp/100);
             SEGGER_RTT_printf(0, buff);
             print_values = false;
         }
         power_manage();
+
+        if (update_battery_values == __bool_true_false_are_defined) {
+            battery_level_measure_start();
+            update_battery_values = false;
+        }
     }
 }
 

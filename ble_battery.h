@@ -17,9 +17,11 @@ typedef struct
     uint16_t                    conn_handle;    /**< Handle of the current connection (as provided by the BLE stack, is BLE_CONN_HANDLE_INVALID if not in a connection).*/
     uint16_t                    service_handle; /**< Handle of ble Service (as provided by the BLE stack). */
     ble_gatts_char_handles_t    battery_char_handles;   /**< Handles related to the our new characteristic. */
+    uint8_t                     battery_level;
 }ble_battery_t;
 
 
+ret_code_t battery_level_measure_start(void);
 
 /**@brief Function for handling BLE Stack events related to battery service and characteristic.
  *
@@ -43,7 +45,7 @@ void ble_battery_service_init(ble_battery_t * p_battery);
  * @param[in]   p_battery                     battery structure.
  * @param[in]   characteristic_value     New characteristic value.
  */
-void ble_battery_level_update(ble_battery_t *p_battery, uint8_t battery_level);
+ void ble_battery_level_update(ble_battery_t *p_battery, uint8_t battery_level);
 
 
 

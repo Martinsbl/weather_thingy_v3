@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <nrf_adc.h>
+#include <nrf_drv_adc.h>
 #include "nrf_gpio.h"
 #include "ble_srv_common.h"
 #include "app_error.h"
@@ -13,9 +15,82 @@
 #include "SEGGER_RTT.h"
 
 #define BATTERY_CHAR_MAX_LEN    sizeof(uint8_t)
- 
-volatile bool battery_cccd_is_enabled, pressure_cccd_is_enabled, humidity_cccd_is_enabled;
 
+volatile bool battery_cccd_is_enabled;
+
+static ble_battery_t *m_battery;
+
+static uint8_t battery_level_convert(nrf_adc_value_t adc_value){
+
+    uint16_t input_millivolts = (uint16_t) (((float) adc_value / 1023) * 1.2 * 3); // Ref sel VBG = 1.2 V, Input scale 1/3
+    uint8_t battery_level_percent = battery_level_in_percent(input_millivolts);
+
+    return battery_level_percent;
+}
+
+ret_code_t battery_level_measure_start()
+{
+    ret_code_t err;
+    nrf_adc_value_t adc_value;
+
+    err = nrf_drv_adc_buffer_convert(&adc_value, 1);
+    if (err == NRF_ERROR_BUSY) {
+        return NRF_ERROR_BUSY;
+    }
+
+    nrf_drv_adc_sample();
+}
+
+void adc_event_handler(nrf_drv_adc_evt_t const * p_event)
+{
+    switch (p_event->type) {
+        case NRF_DRV_ADC_EVT_DONE:
+            ble_battery_level_update(m_battery, battery_level_convert(p_event->data.done.p_buffer[0]));
+            break;
+        case NRF_DRV_ADC_EVT_SAMPLE:
+            break;
+        default:
+            break;
+    }
+}
+
+static void adc_init(void)
+{
+    ret_code_t err = nrf_drv_adc_init(NULL, adc_event_handler);
+    APP_ERROR_CHECK(err);
+
+    static nrf_drv_adc_channel_t channel1 = NRF_DRV_ADC_DEFAULT_CHANNEL(NRF_ADC_CONFIG_INPUT_DISABLED);
+    channel1.config.config.input = NRF_ADC_CONFIG_SCALING_INPUT_ONE_THIRD;
+
+    nrf_drv_adc_channel_enable(&channel1);
+
+}
+
+ static void on_ble_write(ble_battery_t * p_battery, ble_evt_t * p_ble_evt)
+ {
+     uint32_t err_code;
+     ble_gatts_value_t gatts_value;
+
+     uint16_t cccd_value;
+     gatts_value.len = sizeof(uint16_t);
+     gatts_value.offset = 0;
+     gatts_value.p_value = (uint8_t*)&cccd_value;
+
+
+     if(p_ble_evt->evt.gatts_evt.params.write.handle == p_battery->battery_char_handles.cccd_handle)
+     {
+         err_code = sd_ble_gatts_value_get(p_battery->conn_handle, p_battery->battery_char_handles.cccd_handle, &gatts_value);
+         APP_ERROR_CHECK(err_code);
+         if(cccd_value == BLE_GATT_HVX_NOTIFICATION)
+         {
+             battery_cccd_is_enabled = true;
+         }
+         else
+         {
+             battery_cccd_is_enabled = false;
+         }
+     }
+ }
 
 void ble_battery_on_ble_evt(ble_battery_t * p_battery, ble_evt_t * p_ble_evt)
 {
@@ -28,6 +103,7 @@ void ble_battery_on_ble_evt(ble_battery_t * p_battery, ble_evt_t * p_ble_evt)
             p_battery->conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
         case BLE_GATTS_EVT_WRITE:
+            on_ble_write(p_battery, p_ble_evt);
             break;
         default:
             // No implementation needed.
@@ -73,8 +149,8 @@ static uint32_t ble_char_battery_add(ble_battery_t * p_battery)
     attr_char_value.p_attr_md   = &attr_md;
     attr_char_value.max_len     = BATTERY_CHAR_MAX_LEN;
     attr_char_value.init_len    = BATTERY_CHAR_MAX_LEN;
-    uint8_t value[BATTERY_CHAR_MAX_LEN]            = {0};
-    attr_char_value.p_value     = value;
+
+    attr_char_value.p_value     = &p_battery->battery_level;
 
     err_code = sd_ble_gatts_characteristic_add(p_battery->service_handle,
                                        &char_md,
@@ -95,6 +171,13 @@ void ble_battery_service_init(ble_battery_t * p_battery)
 {
     uint32_t   err_code; // Variable to hold return codes from library and softdevice functions
 
+    m_battery = p_battery;
+
+    adc_init();
+
+    err_code = battery_level_measure_start(); // Get initial battery level
+    APP_ERROR_CHECK(err_code);
+
     ble_uuid_t          service_uuid;
     BLE_UUID_BLE_ASSIGN(service_uuid, BLE_UUID_BATTERY_SERVICE);
 
@@ -106,26 +189,34 @@ void ble_battery_service_init(ble_battery_t * p_battery)
     APP_ERROR_CHECK(err_code);
     
     ble_char_battery_add(p_battery);
+
 }
 
 
-void ble_battery_level_update(ble_battery_t *p_battery, uint8_t battery_level)
+void ble_battery_level_update(ble_battery_t *p_battery, uint8_t current_battery_level)
 {
+
+    static uint8_t previous_battery_level = 0;
+
     // Send value if connected and notifying
     if ((p_battery->conn_handle != BLE_CONN_HANDLE_INVALID) && (battery_cccd_is_enabled == true))
     {
-        uint16_t               len = sizeof(battery_level);
-        ble_gatts_hvx_params_t hvx_params;
-        memset(&hvx_params, 0, sizeof(hvx_params));
+        if (previous_battery_level != current_battery_level)
+        {
+            uint16_t               len = sizeof(current_battery_level);
+            ble_gatts_hvx_params_t hvx_params;
+            memset(&hvx_params, 0, sizeof(hvx_params));
 
-        hvx_params.handle = p_battery->battery_char_handles.value_handle;
-        hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-        hvx_params.offset = 0;
-        hvx_params.p_len  = &len;
-        hvx_params.p_data = &battery_level;
-        uint32_t err = sd_ble_gatts_hvx(p_battery->conn_handle, &hvx_params);
-        if(err != NRF_SUCCESS)
-            SEGGER_RTT_printf(0, "Temp HVX ERROR: %#x\n\n", err);
-    } 
+            hvx_params.handle = p_battery->battery_char_handles.value_handle;
+            hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
+            hvx_params.offset = 0;
+            hvx_params.p_len  = &len;
+            hvx_params.p_data = &current_battery_level;
+            uint32_t err = sd_ble_gatts_hvx(p_battery->conn_handle, &hvx_params);
+            if(err != NRF_SUCCESS)
+                SEGGER_RTT_printf(0, "Temp HVX ERROR: %#x\n\n", err);
+        }
+    }
+    previous_battery_level = current_battery_level;
 }
 
