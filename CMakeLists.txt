@@ -31,7 +31,7 @@ if (NRF_VERSION MATCHES NRF51)
     set(SOC_CMAKE_C_FLAGS -mcpu=cortex-m0)
     set(SOC_EXE_LINKER_FLAGS -mcpu=cortex-m0)
 
-    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex)
+    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex)
 
     # Set device type to flash
     set(FLASH_SOC nrf51)
@@ -73,7 +73,7 @@ elseif (NRF_VERSION MATCHES NRF52)
     set(SOC_CMAKE_C_FLAGS -mcpu=cortex-m4)
     set(SOC_EXE_LINKER_FLAGS -mcpu=cortex-m4)
 
-    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex)
+    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s132/hex/s132_nrf52_2.0.1_softdevice.hex)
 
     # Set device type to flash
     set(FLASH_SOC nrf52)
@@ -165,16 +165,16 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c)
 
 
-set(MAIN_TARGET ${PROJECT_NAME}.out)
-add_executable(${MAIN_TARGET} ${COMMON_SOURCE_FILES} ${SOC_SOURCE_FILES})
+set(MAIN_TARGET ${PROJECT_NAME}.elf)
+add_executable(${MAIN_TARGET} ${COMMON_SOURCE_FILES} ${SOC_SOURCE_FILES} ${LINKER_SCRIPT})
 
 
 ## Set additional project-specific flags for compilers like e.g.:
 # '-O0' for Optimization level 0.
 # '-Werror' to treat all warnings as error.
 # '-lc -lrdimon -u _printf_float' for printf with floating points.
-SET(CMAKE_C_FLAGS "${SOC_CMAKE_C_FLAGS} ${CMAKE_C_FLAGS} -O0 -g3 -lc -lrdimon -u _printf_float") # <- Add extra project-specific flags for C compiler.
-SET(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}") # <- Add extra project-specific flags for ASM compiler.
+SET(CMAKE_C_FLAGS "${SOC_CMAKE_C_FLAGS} ${CMAKE_C_FLAGS} -DDEBUG_BUILD -O0 -lc -lrdimon -u _printf_float -ggdb3 -fomit-frame-pointer") # <- Add extra project-specific flags for C compiler.
+SET(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -ggdb3 -O0 " ) # <- Add extra project-specific flags for ASM compiler.
 SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SOC_EXE_LINKER_FLAGS}")
 
 

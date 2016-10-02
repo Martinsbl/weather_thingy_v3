@@ -8,7 +8,6 @@
 #include <string.h>
 #include <nrf_adc.h>
 #include <nrf_drv_adc.h>
-#include "nrf_gpio.h"
 #include "ble_srv_common.h"
 #include "app_error.h"
 #include "ble_battery.h"
@@ -45,7 +44,7 @@ void adc_event_handler(nrf_drv_adc_evt_t const * p_event)
 {
     switch (p_event->type) {
         case NRF_DRV_ADC_EVT_DONE:
-            ble_battery_level_update(m_battery, battery_level_convert(p_event->data.done.p_buffer[0]));
+            m_battery->battery_level = battery_level_convert(p_event->data.done.p_buffer[0]);
             break;
         case NRF_DRV_ADC_EVT_SAMPLE:
             break;
@@ -175,8 +174,8 @@ void ble_battery_service_init(ble_battery_t * p_battery)
 
     adc_init();
 
-    err_code = battery_level_measure_start(); // Get initial battery level
-    APP_ERROR_CHECK(err_code);
+//    err_code = battery_level_measure_start(); // Get initial battery level
+//    APP_ERROR_CHECK(err_code);
 
     ble_uuid_t          service_uuid;
     BLE_UUID_BLE_ASSIGN(service_uuid, BLE_UUID_BATTERY_SERVICE);

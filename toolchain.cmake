@@ -6,7 +6,7 @@ SET(CMAKE_SYSTEM_VERSION 1)
 CMAKE_FORCE_C_COMPILER("/usr/bin/arm-none-eabi-gcc" GNU)
 add_compile_options(-Wno-deprecated-declarations) # Get rid of "The CMAKE_FORCE_C_COMPILER macro is deprecated." warning at compilation
 
-SET(CMAKE_C_FLAGS "-std=gnu99 -mthumb -mabi=aapcs -g3 -mfloat-abi=soft -ffunction-sections -fdata-sections -fno-strict-aliasing -fno-builtin --short-enums")
+SET(CMAKE_C_FLAGS "-std=gnu99 -mthumb -mabi=aapcs -mfloat-abi=soft -ffunction-sections -fdata-sections -fno-strict-aliasing -fno-builtin --short-enums")
 SET(CMAKE_ASM_FLAGS "-x assembler-with-cpp")
 
 SET(LINKER_SCRIPT "/home/martin/nordic/SDK11/examples/weather_thingy_v4/linker_nrf51.ld")

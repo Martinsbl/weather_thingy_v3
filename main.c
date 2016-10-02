@@ -110,6 +110,8 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
     SEGGER_RTT_printf(0, "\033[1;31m");
     SEGGER_RTT_printf(0, "\nError: 0x%#x\nLine: %d\nFile: %s\n\n", error_info->err_code, error_info->line_num, error_info->p_file_name);
     SEGGER_RTT_printf(0, "\033[0m");
+    volatile uint8_t  test = 0;
+    test=+3;
     // On assert, the system can only recover with a reset.
 #ifndef DEBUG
     NVIC_SystemReset();
@@ -396,7 +398,6 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
         break;
-            break;
 
         default:
             // No implementation needed.
@@ -693,7 +694,7 @@ int main(void)
     {
         if(print_values == true)
         {        
-            char buff[50];
+            char buff[40];
             sprintf(buff, "Temp: %0.2f\nHumi: %0.2f\nPres: %0.2f\n\n", (float)temperature_comp/100, (float)humidity_comp/1024, (float)pressure_comp/100);
             SEGGER_RTT_printf(0, buff);
             print_values = false;
