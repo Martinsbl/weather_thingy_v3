@@ -11,5 +11,5 @@ SET(CMAKE_ASM_FLAGS "-x assembler-with-cpp")
 
 SET(LINKER_SCRIPT "${PROJECT_SOURCE_DIR}/linker_nrf52.ld")
 SET(TEMPLATE_PATH "${SDK_ROOT_FOLDER}/components/toolchain/gcc/Makefile.posix")
-SET(CMAKE_EXE_LINKER_FLAGS "-Xlinker -Map=${PROJECT_SOURCE_DIR}/${PROJECT_NAME}.map -mthumb -mabi=aapcs -L ${TEMPLATE_PATH} -T${LINKER_SCRIPT} -Wl,--gc-sections  --specs=nano.specs -lc -lnosys")
+SET(CMAKE_EXE_LINKER_FLAGS "-Xlinker -Map=${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.map -mthumb -mabi=aapcs -L ${TEMPLATE_PATH} -T${LINKER_SCRIPT} -Wl,--gc-sections  --specs=nano.specs -lc -lnosys")
 
