@@ -74,7 +74,7 @@ typedef enum{
 
 typedef struct 
 {
-    uint16_t humidity;
+    uint32_t humidity;
     uint32_t pressure;
     uint32_t temperature;
 }weather_values_t;

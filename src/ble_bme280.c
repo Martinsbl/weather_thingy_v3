@@ -17,7 +17,9 @@
 #define HUMIDITY_CHAR_LEN       sizeof(uint32_t)
 #define TEMPERATURE_CHAR_LEN    sizeof(uint32_t)
 
-volatile bool temperature_cccd_is_enabled, pressure_cccd_is_enabled, humidity_cccd_is_enabled;
+volatile bool temperature_cccd_is_enabled = false;
+volatile bool pressure_cccd_is_enabled = false;
+volatile bool humidity_cccd_is_enabled = false;
 
 
 static void on_ble_write(ble_bme280_t * p_bme280, ble_evt_t * p_ble_evt)

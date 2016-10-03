@@ -8,6 +8,8 @@
 #include <string.h>
 #include <nrf_adc.h>
 #include <nrf_drv_adc.h>
+#include <ble_battery.h>
+#include <app_util_platform.h>
 #include "ble_srv_common.h"
 #include "app_error.h"
 #include "ble_battery.h"
@@ -19,11 +21,15 @@ volatile bool battery_cccd_is_enabled;
 
 static ble_battery_t *m_battery;
 
+volatile uint8_t battery_level;
+
 static uint8_t battery_level_convert(nrf_adc_value_t adc_value){
 
-    uint16_t input_millivolts = (uint16_t) (((float) adc_value / 1023) * 1.2 * 3); // Ref sel VBG = 1.2 V, Input scale 1/3
+    uint16_t input_millivolts = (uint16_t) (((float) adc_value / 1023) * 1.2 * 3 * 1000); // Ref sel VBG = 1.2 V, Input scale 1/3, * 1000 for mV
+
     uint8_t battery_level_percent = battery_level_in_percent(input_millivolts);
 
+    SEGGER_RTT_printf(0, "ADC: %d, mV: %d, bat level: %d\n", adc_value, input_millivolts, battery_level_percent);
     return battery_level_percent;
 }
 
@@ -44,7 +50,8 @@ void adc_event_handler(nrf_drv_adc_evt_t const * p_event)
 {
     switch (p_event->type) {
         case NRF_DRV_ADC_EVT_DONE:
-            m_battery->battery_level = battery_level_convert(p_event->data.done.p_buffer[0]);
+            battery_level = battery_level_convert(p_event->data.done.p_buffer[0]);
+            ble_battery_level_update(m_battery, battery_level);
             break;
         case NRF_DRV_ADC_EVT_SAMPLE:
             break;
@@ -55,15 +62,19 @@ void adc_event_handler(nrf_drv_adc_evt_t const * p_event)
 
 static void adc_init(void)
 {
-    ret_code_t err = nrf_drv_adc_init(NULL, adc_event_handler);
-    APP_ERROR_CHECK(err);
+    ret_code_t ret_code;
+    nrf_drv_adc_config_t adc_config = NRF_DRV_ADC_DEFAULT_CONFIG;                                              //Get default ADC configuration
+    static nrf_drv_adc_channel_t adc_channel_config = NRF_DRV_ADC_DEFAULT_CHANNEL(NRF_ADC_CONFIG_INPUT_DISABLED);     //Get default ADC channel configuration
 
-    static nrf_drv_adc_channel_t channel1 = NRF_DRV_ADC_DEFAULT_CHANNEL(NRF_ADC_CONFIG_INPUT_DISABLED);
-    channel1.config.config.input = NRF_ADC_CONFIG_SCALING_INPUT_ONE_THIRD;
+    adc_channel_config.config.config.input = NRF_ADC_CONFIG_SCALING_SUPPLY_ONE_THIRD;
+//    adc_channel_config.config.config.ain = NRF_ADC_CONFIG_INPUT_DISABLED;
 
-    nrf_drv_adc_channel_enable(&channel1);
+    ret_code = nrf_drv_adc_init(&adc_config, adc_event_handler);              //Initialize the ADC
+    APP_ERROR_CHECK(ret_code);
 
+    nrf_drv_adc_channel_enable(&adc_channel_config);                          //Configure and enable an ADC channel
 }
+
 
  static void on_ble_write(ble_battery_t * p_battery, ble_evt_t * p_ble_evt)
  {
@@ -200,7 +211,7 @@ void ble_battery_level_update(ble_battery_t *p_battery, uint8_t current_battery_
     // Send value if connected and notifying
     if ((p_battery->conn_handle != BLE_CONN_HANDLE_INVALID) && (battery_cccd_is_enabled == true))
     {
-        if (previous_battery_level != current_battery_level)
+        if (1)//previous_battery_level != current_battery_level)
         {
             uint16_t               len = sizeof(current_battery_level);
             ble_gatts_hvx_params_t hvx_params;

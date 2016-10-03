@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <bme280.h>
 #include "nrf_delay.h"
 #include "nrf_drv_twi.h"
 #include "bme280.h"
@@ -208,11 +209,19 @@ uint32_t bme280_get_weather(weather_values_t * weather_values)
     uint32_t err;
     uint8_t raw_values[8] = {0};
 
+    /// Read temp, humidity, and pressure
     err = bme280_read_registers(BME_REG_PRESS_MSB, raw_values, sizeof(raw_values));
 
-    weather_values->pressure = ((raw_values[0] << 16) | (raw_values[1] << 8) | raw_values[2]) >> 4;
-    weather_values->temperature = ((raw_values[3] << 16) | (raw_values[4] << 8) | raw_values[5]) >> 4;
-    weather_values->humidity = (raw_values[6] << 8) | raw_values[7];
+    /// Sort raw data
+    weather_values_t raw_weather_data;
+    raw_weather_data.pressure = ((raw_values[0] << 16) | (raw_values[1] << 8) | raw_values[2]) >> 4;
+    raw_weather_data.temperature = ((raw_values[3] << 16) | (raw_values[4] << 8) | raw_values[5]) >> 4;
+    raw_weather_data.humidity = (raw_values[6] << 8) | raw_values[7];
+
+    /// Calibrate values
+    weather_values->pressure    = bme280_calibrate_pressure(raw_weather_data.pressure);
+    weather_values->temperature = bme280_calibrate_temperature(raw_weather_data.temperature);
+    weather_values->humidity = bme280_calibrate_humidity(raw_weather_data.humidity);
 
     return err;   
 }
