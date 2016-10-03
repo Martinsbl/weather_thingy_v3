@@ -6,7 +6,7 @@ project(blinky C ASM)
 set(SDK_ROOT_FOLDER "~/nordic/SDK11")
 
 ## Define nRF5x verions
-set(NRF_VERSION NRF51)
+set(NRF_VERSION NRF52)
 
 ## Choose defines based on nRF5 version
 if (NRF_VERSION MATCHES NRF51)
@@ -31,7 +31,9 @@ if (NRF_VERSION MATCHES NRF51)
     set(SOC_CMAKE_C_FLAGS -mcpu=cortex-m0)
     set(SOC_EXE_LINKER_FLAGS -mcpu=cortex-m0)
 
-    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex)
+    set(LINKER_FILE ${PROJECT_SOURCE_DIR}/linker_nrf51.ld)
+
+    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s130/hex/s130_nrf51_2.0.0_softdevice.hex)
 
     # Set device type to flash
     set(FLASH_SOC nrf51)
@@ -73,7 +75,7 @@ elseif (NRF_VERSION MATCHES NRF52)
     set(SOC_CMAKE_C_FLAGS -mcpu=cortex-m4)
     set(SOC_EXE_LINKER_FLAGS -mcpu=cortex-m4)
 
-    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s132/hex/s132_nrf52_2.0.1_softdevice.hex)
+    set(SD_FILE ${SDK_ROOT_FOLDER}/components/softdevice/s132/hex/s132_nrf52_2.0.0_softdevice.hex)
 
     # Set device type to flash
     set(FLASH_SOC nrf52)
@@ -123,7 +125,7 @@ include_directories(
         ${SDK_ROOT_FOLDER}/examples/../bsp
         ${SDK_ROOT_FOLDER}/external/segger_rtt
         debug
-        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc
+#        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc
 )
 
 
@@ -146,7 +148,7 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/uart/nrf_drv_uart.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/pstorage/pstorage.c
         bme280.c
-        ble_battery.c
+#        ble_battery.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/twi_master/nrf_drv_twi.c
         ${SDK_ROOT_FOLDER}/components/libraries/button/app_button.c
         ${SDK_ROOT_FOLDER}/components/libraries/util/app_error.c
@@ -162,7 +164,8 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT.c
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT_printf.c
         ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler/softdevice_handler.c
-        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c)
+#        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c
+        )
 
 
 set(MAIN_TARGET ${PROJECT_NAME}.elf)
@@ -173,7 +176,7 @@ add_executable(${MAIN_TARGET} ${COMMON_SOURCE_FILES} ${SOC_SOURCE_FILES} ${LINKE
 # '-O0' for Optimization level 0.
 # '-Werror' to treat all warnings as error.
 # '-lc -lrdimon -u _printf_float' for printf with floating points.
-SET(CMAKE_C_FLAGS "${SOC_CMAKE_C_FLAGS} ${CMAKE_C_FLAGS} -DDEBUG_BUILD -O0 -lc -lrdimon -u _printf_float -ggdb3 -fomit-frame-pointer") # <- Add extra project-specific flags for C compiler.
+SET(CMAKE_C_FLAGS "${SOC_CMAKE_C_FLAGS} ${CMAKE_C_FLAGS} -O0 -lc -lrdimon -u _printf_float -ggdb3 -fomit-frame-pointer") # <- Add extra project-specific flags for C compiler.
 SET(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -ggdb3 -O0 " ) # <- Add extra project-specific flags for ASM compiler.
 SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SOC_EXE_LINKER_FLAGS}")
 
@@ -186,7 +189,7 @@ add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
         COMMENT "Building ${HEX_FILE} \nBuilding ${BIN_FILE}"
         )
 
-set(ARG_FILE ${PROJECT_SOURCE_DIR}/upload.jlink)
+#set(ARG_FILE ${PROJECT_SOURCE_DIR}/upload.jlink)
 #add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
 #        COMMAND JLinkExe ${ARG_FILE}
 #        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}

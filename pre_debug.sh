@@ -4,7 +4,7 @@ FLASH_DEVICE=$1
 BINDIR=./
 
 # setup JLink command file
-echo "device nrf51422_xxac" >> $BINDIR/pre_debug.seg
+echo "device $FLASH_DEVICE" >> $BINDIR/pre_debug.seg
 echo "speed 10000" >> $BINDIR/pre_debug.seg
 echo "sleep 1000" >> $BINDIR/burn.seg
 echo "if SWD" >> $BINDIR/pre_debug.seg

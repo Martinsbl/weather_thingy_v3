@@ -253,7 +253,7 @@ static void gap_params_init(void)
 static void services_init(void)
 {
     ble_bme280_service_init(&m_bme280);
-    ble_battery_service_init(&m_battery);
+//    ble_battery_service_init(&m_battery);
 }
 
 
@@ -421,7 +421,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     ble_bme280_on_ble_evt(&m_bme280, p_ble_evt);
-    ble_battery_on_ble_evt(&m_battery, p_ble_evt);
+//    ble_battery_on_ble_evt(&m_battery, p_ble_evt);
 }
 
 
@@ -701,10 +701,10 @@ int main(void)
         }
         power_manage();
 
-        if (update_battery_values == __bool_true_false_are_defined) {
-            battery_level_measure_start();
-            update_battery_values = false;
-        }
+//        if (update_battery_values == __bool_true_false_are_defined) {
+//            battery_level_measure_start();
+//            update_battery_values = false;
+//        }
     }
 }
 
