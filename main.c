@@ -71,7 +71,7 @@ static dm_application_instance_t         m_app_handle;                          
 
 static uint16_t                          m_conn_handle = BLE_CONN_HANDLE_INVALID;   /**< Handle of the current connection. */
 
-//#define APPLICATION_SIMULATION
+#define APPLICATION_SIMULATION
 
 #define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
 #define TIMER_INTERVAL_BATTERY      APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
@@ -694,7 +694,7 @@ int main(void)
     {
         if(print_values == true)
         {        
-            char buff[40];
+            char buff[35];
             sprintf(buff, "Temp: %0.2f\nHumi: %0.2f\nPres: %0.2f\n\n", (float)temperature_comp/100, (float)humidity_comp/1024, (float)pressure_comp/100);
             SEGGER_RTT_printf(0, buff);
             print_values = false;

@@ -6,7 +6,7 @@ project(blinky C ASM)
 set(SDK_ROOT_FOLDER "~/nordic/SDK11")
 
 ## Define nRF5x verions
-set(NRF_VERSION NRF52)
+set(NRF_VERSION NRF51)
 
 ## Choose defines based on nRF5 version
 if (NRF_VERSION MATCHES NRF51)
@@ -94,6 +94,9 @@ add_definitions(${SOC_DEFINES} ${COMMON_DEFINES})
 
 ## Include common directories
 include_directories(
+        config
+        debug
+        include
         ${SDK_ROOT_FOLDER}/components/toolchain/CMSIS/Include
         ${SDK_ROOT_FOLDER}/components/toolchain/gcc
         ${SDK_ROOT_FOLDER}/components/toolchain/
@@ -101,7 +104,6 @@ include_directories(
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/delay
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/hal
         ${SDK_ROOT_FOLDER}/examples/bsp
-        config
         ${SDK_ROOT_FOLDER}/components/ble/ble_advertising
         ${SDK_ROOT_FOLDER}/components/ble/common
         ${SDK_ROOT_FOLDER}/components/ble/device_manager
@@ -124,7 +126,6 @@ include_directories(
         ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler
         ${SDK_ROOT_FOLDER}/examples/../bsp
         ${SDK_ROOT_FOLDER}/external/segger_rtt
-        debug
 #        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc
 )
 
@@ -133,7 +134,9 @@ include_directories(
 set(COMMON_SOURCE_FILES
         main.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/delay/nrf_delay.c
-        ble_bme280.c
+        src/ble_bme280.c
+        src/bme280.c
+#        ble_battery.c
         debug/msgs.c
         ${SDK_ROOT_FOLDER}/examples/bsp/bsp.c
         ${SDK_ROOT_FOLDER}/examples/bsp/bsp_btn_ble.c
@@ -147,8 +150,6 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/gpiote/nrf_drv_gpiote.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/uart/nrf_drv_uart.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/pstorage/pstorage.c
-        bme280.c
-#        ble_battery.c
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/twi_master/nrf_drv_twi.c
         ${SDK_ROOT_FOLDER}/components/libraries/button/app_button.c
         ${SDK_ROOT_FOLDER}/components/libraries/util/app_error.c
@@ -181,6 +182,7 @@ SET(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -ggdb3 -O0 " ) # <- Add extra project-sp
 SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SOC_EXE_LINKER_FLAGS}")
 
 
+# Make binary files
 set(HEX_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.hex)
 set(BIN_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.bin)
 add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
@@ -189,14 +191,8 @@ add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
         COMMENT "Building ${HEX_FILE} \nBuilding ${BIN_FILE}"
         )
 
-#set(ARG_FILE ${PROJECT_SOURCE_DIR}/upload.jlink)
-#add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
-#        COMMAND JLinkExe ${ARG_FILE}
-#        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-#        COMMENT "Programming...\n"
-#        )
 
-
+# Flash binary to chip
 add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
         COMMAND ./flash.sh ${FLASH_SOC} ${PROJECT_SOURCE_DIR} ${HEX_FILE} ${SD_FILE}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
