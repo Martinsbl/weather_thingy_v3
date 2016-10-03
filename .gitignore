@@ -1,5 +1,4 @@
 *.*
-*.uvguix.*
 !.gitignore
 
 # C files
@@ -14,7 +13,6 @@
 !*.uvoptx
 
 # Various files
-!*.md
 !*.xml
 
 # Segger Studio files
@@ -26,15 +24,11 @@
 !linker_nrf51.ld
 !linker_nrf52.ld
 !toolchain.cmake
-!*.jlink
 !*.sh
-!*.gdbinit
+!.idea/workspace.xml
 
 # Folders
-*/_build/
-*/armgcc/
-*/iar/
-*/Output/
 build/Debug/
+
 
 !*.png

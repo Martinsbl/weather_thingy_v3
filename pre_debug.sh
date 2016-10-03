@@ -13,11 +13,11 @@ echo "r" >> $BINDIR/pre_debug.seg
 echo "h" >> $BINDIR/pre_debug.seg
 echo "exit" >> $BINDIR/pre_debug.seg
 
-# flash new binary to the board
+# Reset and halt chip
 JLinkExe < $BINDIR/pre_debug.seg
 
-# clean up unused flash file
+# Clean up unused flash file
 rm $BINDIR/pre_debug.seg
 
-# flash new binary to the board
-JLinkGDBServer -device nrf51422_xxac -if swd -speed 1000
+# Run JLink GDB Server
+JLinkGDBServer -device ${FLASH_DEVICE} -if swd -speed 10000
