@@ -97,6 +97,7 @@ include_directories(
         config
         debug
         include
+        ${SDK_ROOT_FOLDER}/components/ble/ble_db_discovery
         ${SDK_ROOT_FOLDER}/components/toolchain/CMSIS/Include
         ${SDK_ROOT_FOLDER}/components/toolchain/gcc
         ${SDK_ROOT_FOLDER}/components/toolchain/
@@ -138,9 +139,11 @@ set(COMMON_SOURCE_FILES
         src/bme280.c
         src/ble_battery.c
         debug/msgs.c
+        src/ble_cts_c.c
         ${SDK_ROOT_FOLDER}/examples/bsp/bsp.c
         ${SDK_ROOT_FOLDER}/examples/bsp/bsp_btn_ble.c
         ${SDK_ROOT_FOLDER}/components/ble/common/ble_advdata.c
+        ${SDK_ROOT_FOLDER}/components/ble/ble_db_discovery/ble_db_discovery.c
         ${SDK_ROOT_FOLDER}/components/ble/ble_advertising/ble_advertising.c
         ${SDK_ROOT_FOLDER}/components/ble/common/ble_conn_params.c
         ${SDK_ROOT_FOLDER}/components/ble/common/ble_srv_common.c

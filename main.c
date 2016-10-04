@@ -8,6 +8,8 @@
 #include <string.h>
 #include <app_util.h>
 #include <bme280.h>
+#include <ble_cts_c.h>
+#include <ble_date_time.h>
 
 #include "nordic_common.h"
 #include "nrf.h"
@@ -37,6 +39,7 @@
 #include "ble_bme280.h"
 #include "msgs.h"
 #include "ble_battery.h"
+#include "ble_cts_c.h"
 
 #define CENTRAL_LINK_COUNT               0                                          /**< Number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT            1                                          /**< Number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -72,7 +75,7 @@ static dm_application_instance_t         m_app_handle;                          
 
 static uint16_t                          m_conn_handle = BLE_CONN_HANDLE_INVALID;   /**< Handle of the current connection. */
 
-//#define APPLICATION_SIMULATION
+#define APPLICATION_SIMULATION
 
 #define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
 #define TIMER_INTERVAL_BATTERY      APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
@@ -85,6 +88,7 @@ volatile bool update_battery_values = false;
 
 ble_bme280_t m_bme280;
 ble_battery_t m_battery;
+ble_cts_c_t m_cts;
 
 static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
 
@@ -191,7 +195,34 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
+void ctc_c_event_handler(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
+{
+    SEGGER_RTT_printf(0, "CTS evt %d\n", p_evt->evt_type);
 
+    switch (p_evt->evt_type) {
+        case BLE_CTS_C_EVT_DISCOVERY_COMPLETE:
+            break;
+        case BLE_CTS_C_EVT_CURRENT_TIME:
+            SEGGER_RTT_printf(0, "Cur hour %d:%d:%d\n", p_evt->params.current_time.exact_time_256.day_date_time.date_time.hours,
+                              p_evt->params.current_time.exact_time_256.day_date_time.date_time.minutes,
+                              p_evt->params.current_time.exact_time_256.day_date_time.date_time.seconds);
+            break;
+        case BLE_CTS_C_EVT_DISCONN_COMPLETE:
+            break;
+        case BLE_CTS_C_EVT_DISCOVERY_FAILED:
+            break;
+        case BLE_CTS_C_EVT_INVALID_TIME:
+            break;
+        default:
+            break;
+    }
+}
+
+
+void ctc_c_error_handler(uint32_t error_code)
+{
+    SEGGER_RTT_printf(0, "CTC err %d\n", error_code);
+}
 
 /**@brief Function for initializing services that will be used by the application.
  */
@@ -199,6 +230,12 @@ static void services_init(void)
 {
     ble_bme280_service_init(&m_bme280);
     ble_battery_service_init(&m_battery);
+
+    ble_cts_c_init_t p_cts_init;
+    p_cts_init.evt_handler = ctc_c_event_handler;
+    p_cts_init.error_handler = ctc_c_error_handler;
+    ble_cts_c_init(&m_cts, &p_cts_init);
+
 }
 
 
@@ -598,7 +635,7 @@ void twi_init (void)
 
 void update_weather_values(weather_values_t * weather_values)
 {
-#if APPLICATION_SIMULATION
+#ifdef APPLICATION_SIMULATION
 
     static uint32_t temperature_simulated = 2000;
     static uint32_t humidity_simulated = 400000;
@@ -671,7 +708,7 @@ int main(void)
             ble_bme280_humidity_update(&m_bme280, &weather_values.humidity);
             ble_bme280_pressure_update(&m_bme280, &weather_values.pressure);
 
-            char buff[35];
+            char buff[40];
             sprintf(buff, "Temp: %0.2f\nHumi: %0.2f\nPres: %0.2f\n\n",
                     (float)weather_values.temperature/100,
                     (float)weather_values.humidity/1024,
