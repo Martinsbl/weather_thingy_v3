@@ -126,7 +126,7 @@ include_directories(
         ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler
         ${SDK_ROOT_FOLDER}/examples/../bsp
         ${SDK_ROOT_FOLDER}/external/segger_rtt
-#        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc
+        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc
 )
 
 
@@ -136,7 +136,7 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/delay/nrf_delay.c
         src/ble_bme280.c
         src/bme280.c
-#        ble_battery.c
+        src/ble_battery.c
         debug/msgs.c
         ${SDK_ROOT_FOLDER}/examples/bsp/bsp.c
         ${SDK_ROOT_FOLDER}/examples/bsp/bsp_btn_ble.c
@@ -165,7 +165,7 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT.c
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT_printf.c
         ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler/softdevice_handler.c
-#        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c
+        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c
         )
 
 
