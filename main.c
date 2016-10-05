@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <app_util.h>
-#include <bme280.h>
+#include <ble_advdata.h>
 
 #include "nordic_common.h"
 #include "nrf.h"
@@ -26,11 +26,7 @@
 #include "app_trace.h"
 #include "bsp.h"
 #include "bsp_btn_ble.h"
-#include "sensorsim.h"
 #include "nrf_gpio.h"
-#include "ble_hci.h"
-#include "ble_advdata.h"
-#include "ble_advertising.h"
 #include "app_uart.h"
 #include "bme280.h"
 #include "SEGGER_RTT.h"
@@ -77,14 +73,17 @@ static uint16_t                          m_conn_handle = BLE_CONN_HANDLE_INVALID
 #define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
 #define TIMER_INTERVAL_BATTERY      APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
 
-APP_TIMER_DEF(m_temperature_timer_id);
-APP_TIMER_DEF(m_battery_timer_id);
+APP_TIMER_DEF(m_timer_id_temperature);
+APP_TIMER_DEF(m_timer_id_battery);
 
-volatile bool get_weather_values = false;
-volatile bool update_battery_values = false;
+volatile bool start_weather_update = false;
+volatile bool start_battery_update = false;
 
 ble_bme280_t m_bme280;
 ble_battery_t m_battery;
+
+weather_values_t weather_values;
+ble_advdata_t advdata;
 
 static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
 
@@ -129,19 +128,46 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 }
 
 
+void update_weather_values(weather_values_t * weather_values)
+{
+#if APPLICATION_SIMULATION
+
+    static uint32_t temperature_simulated = 2000;
+    static uint32_t humidity_simulated = 400000;
+    static uint32_t pressure_simulated = 100000;
+
+    temperature_simulated += 17;
+    if(temperature_simulated >= 2800) temperature_simulated = 2000;
+    humidity_simulated += 37;
+    if(humidity_simulated >= 500000) humidity_simulated = 400000;
+    pressure_simulated += 13;
+    if(pressure_simulated >= 101000) pressure_simulated = 100000;
+
+    weather_values->temperature = temperature_simulated;
+    weather_values->pressure = pressure_simulated;
+    weather_values->humidity = humidity_simulated;
+#else
+
+    uint32_t err_code = bme280_get_weather(weather_values);
+    APP_ERROR_CHECK(err_code);
+
+#endif
+}
+
 /// //
 /// \param p_context: not important
 void timer_timeout_handler_temperature(void * p_context)
 {
-    get_weather_values = true;
+    start_weather_update = true;
 }
 
 
 
 void timer_timeout_handler_battery(void * p_context)
 {
-    update_battery_values = true;
+    start_battery_update = true;
 }
+
 
 /**@brief Function for the Timer initialization.
  *
@@ -154,11 +180,12 @@ static void timers_init(void)
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
 
     uint32_t err_code;
-    err_code = app_timer_create(&m_temperature_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler_temperature);
+    err_code = app_timer_create(&m_timer_id_temperature, APP_TIMER_MODE_REPEATED, timer_timeout_handler_temperature);
     APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_create(&m_battery_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler_battery);
+    err_code = app_timer_create(&m_timer_id_battery, APP_TIMER_MODE_REPEATED, timer_timeout_handler_battery);
     APP_ERROR_CHECK(err_code);
+
 }
 
 
@@ -200,6 +227,7 @@ static void services_init(void)
     ble_bme280_service_init(&m_bme280);
     ble_battery_service_init(&m_battery);
 }
+
 
 
 /**@brief Function for handling the Connection Parameters Module.
@@ -263,10 +291,10 @@ static void application_timers_start(void)
 {
     uint32_t err_code;
 
-    err_code = app_timer_start(m_temperature_timer_id, TIMER_INTERVAL_TEMPERATURE, NULL);
+    err_code = app_timer_start(m_timer_id_temperature, TIMER_INTERVAL_TEMPERATURE, NULL);
     APP_ERROR_CHECK(err_code);
 
-    err_code = app_timer_start(m_battery_timer_id, TIMER_INTERVAL_BATTERY, NULL);
+    err_code = app_timer_start(m_timer_id_battery, TIMER_INTERVAL_BATTERY, NULL);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -333,6 +361,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
+            start_weather_update = true;
+            start_battery_update = true;
             break;
 
         case BLE_GAP_EVT_DISCONNECTED:
@@ -517,7 +547,6 @@ static void device_manager_init(bool erase_bonds)
 static void advertising_init(void)
 {
     uint32_t      err_code;
-    ble_advdata_t advdata;
 
     // Build advertising data struct to pass into @ref ble_advertising_init.
     memset(&advdata, 0, sizeof(advdata));
@@ -576,7 +605,7 @@ void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
 }
 
 /**
- * @brief UART initialization.
+ * @brief TWI initialization.
  */
 nrf_drv_twi_t twi_instance = NRF_DRV_TWI_INSTANCE(0);
 void twi_init (void)
@@ -596,30 +625,36 @@ void twi_init (void)
     nrf_drv_twi_enable(&twi_instance);
 }
 
-void update_weather_values(weather_values_t * weather_values)
+void sensor_init(void)
 {
-#if APPLICATION_SIMULATION
+    uint32_t err;
 
-    static uint32_t temperature_simulated = 2000;
-    static uint32_t humidity_simulated = 400000;
-    static uint32_t pressure_simulated = 100000;
-
-    temperature_simulated += 17;
-    if(temperature_simulated >= 2800) temperature_simulated = 2000;
-    humidity_simulated += 37;
-    if(humidity_simulated >= 500000) humidity_simulated = 400000;
-    pressure_simulated += 13;
-    if(pressure_simulated >= 101000) pressure_simulated = 100000;
-
-    weather_values->temperature = temperature_simulated;
-    weather_values->pressure = pressure_simulated;
-    weather_values->humidity = humidity_simulated;
+#ifdef APPLICATION_SIMULATION
+    SEGGER_RTT_printf(0, "\033[2J\033[;HAPPLICATION_SIMULATION Start %s\n\n", __TIME__);
 #else
+    SEGGER_RTT_printf(0, "\033[2J\033[;HStart %s\n\n", __TIME__);
+    twi_init();
 
-    uint32_t err_code = bme280_get_weather(weather_values);
-    APP_ERROR_CHECK(err_code);
+    err = bme280_init(&twi_instance);
+    APP_ERROR_CHECK(err);
 
+    err = bme280_set_mode(OVERSAMPLING_1, OVERSAMPLING_1, OVERSAMPLING_1, NORMAL_MODE);
+    APP_ERROR_CHECK(err);
+
+    err = bme280_get_calibration_values();
+    APP_ERROR_CHECK(err);
 #endif
+}
+
+void update_advertising_packet(void)
+{
+    ble_advdata_manuf_data_t p_manuf_data;
+    p_manuf_data.company_identifier = 0xFFFF;
+    p_manuf_data.data.size = sizeof(weather_values_t);
+    p_manuf_data.data.p_data = (uint8_t *)&weather_values;
+    advdata.p_manuf_specific_data = &p_manuf_data;
+    ble_advdata_set(&advdata, NULL);
+
 }
 
 /**@brief Function for application main entry.
@@ -639,21 +674,7 @@ int main(void)
     services_init();
     conn_params_init();
 
-#ifdef APPLICATION_SIMULATION
-    SEGGER_RTT_printf(0, "\033[2J\033[;HAPPLICATION_SIMULATION Start %s\n\n", __TIME__);
-#else
-    SEGGER_RTT_printf(0, "\033[2J\033[;HStart %s\n\n", __TIME__);
-    twi_init();
-
-    err = bme280_init(&twi_instance);
-    APP_ERROR_CHECK(err);
-
-    err = bme280_set_mode(OVERSAMPLING_1, OVERSAMPLING_1, OVERSAMPLING_1, NORMAL_MODE);
-    APP_ERROR_CHECK(err);
-
-    err = bme280_get_calibration_values();
-    APP_ERROR_CHECK(err);
-#endif
+    sensor_init();
 
     // Start execution.
     application_timers_start();
@@ -661,10 +682,9 @@ int main(void)
     APP_ERROR_CHECK(err_code);
 
     // Enter main loop.
-    weather_values_t weather_values;
     for (;;)
     {
-        if(get_weather_values == true)
+        if(start_weather_update == true)
         {
             update_weather_values(&weather_values);
             ble_bme280_temperature_update(&m_bme280, &weather_values.temperature);
@@ -678,14 +698,18 @@ int main(void)
                     (float)weather_values.pressure/100);
             SEGGER_RTT_printf(0, buff);
 
-            get_weather_values = false;
+            update_advertising_packet();
+
+            start_weather_update = false;
         }
+
+        if (start_battery_update == true) {
+            battery_level_measure_start();
+            start_battery_update = false;
+        }
+
         power_manage();
 
-        if (update_battery_values == true) {
-            battery_level_measure_start();
-            update_battery_values = false;
-        }
     }
 }
 
