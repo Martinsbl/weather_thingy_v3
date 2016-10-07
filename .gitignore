@@ -25,7 +25,6 @@
 !linker_nrf52.ld
 !toolchain.cmake
 !*.sh
-!.idea/workspace.xml
 
 # Folders
 build/Debug/
