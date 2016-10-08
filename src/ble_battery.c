@@ -25,7 +25,8 @@ volatile uint8_t battery_level;
 
 static uint8_t battery_level_convert(nrf_adc_value_t adc_value){
 
-    uint16_t input_millivolts = (uint16_t) (((float) adc_value / 1023) * 1.2 * 3 * 1000); // Ref sel VBG = 1.2 V, Input scale 1/3, * 1000 for mV
+    uint16_t input_millivolts = (uint16_t) (((float) adc_value / 1023) * 1.2 * 3 * 1000) +
+                                296; // Ref sel VBG = 1.2 V, Input scale 1/3, * 1000 for mV, + diode drop on dev kit.
 
     uint8_t battery_level_percent = battery_level_in_percent(input_millivolts);
 

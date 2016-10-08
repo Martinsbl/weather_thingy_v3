@@ -8,6 +8,9 @@
 #include <string.h>
 #include <app_util.h>
 #include <ble_advdata.h>
+#include <app_error.h>
+#include <nrf_delay.h>
+#include <bme280.h>
 
 #include "nordic_common.h"
 #include "nrf.h"
@@ -15,7 +18,6 @@
 #include "ble.h"
 #include "ble_hci.h"
 #include "ble_srv_common.h"
-#include "ble_advdata.h"
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "boards.h"
@@ -68,10 +70,15 @@ static dm_application_instance_t         m_app_handle;                          
 
 static uint16_t                          m_conn_handle = BLE_CONN_HANDLE_INVALID;   /**< Handle of the current connection. */
 
+
+/*
+ * Application specific defines and variables
+ */
+nrf_drv_twi_t m_twi_instance = NRF_DRV_TWI_INSTANCE(0);
 //#define APPLICATION_SIMULATION
 
-#define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
-#define TIMER_INTERVAL_BATTERY      APP_TIMER_TICKS(2000, APP_TIMER_PRESCALER)
+#define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(3000, APP_TIMER_PRESCALER)
+#define TIMER_INTERVAL_BATTERY      APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER)
 
 APP_TIMER_DEF(m_timer_id_temperature);
 APP_TIMER_DEF(m_timer_id_battery);
@@ -83,10 +90,61 @@ ble_bme280_t m_bme280;
 ble_battery_t m_battery;
 
 weather_values_t weather_values;
+weather_values_minmax_t weather_values_minmax = {0};
 ble_advdata_t advdata;
 
 static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
 
+
+
+/**
+ * @brief TWI events handler.
+ */
+void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
+{
+    bme280_twi_event_handler(p_event);
+}
+
+/**
+ * @brief TWI initialization.
+ */
+void twi_init (void)
+{
+    ret_code_t err_code;
+
+    const nrf_drv_twi_config_t twi_config = {
+            .scl                = 4,
+            .sda                = 3,
+            .frequency          = NRF_TWI_FREQ_100K,
+            .interrupt_priority = APP_IRQ_PRIORITY_HIGH
+    };
+
+    err_code = nrf_drv_twi_init(&m_twi_instance, &twi_config, twi_handler, NULL);
+    APP_ERROR_CHECK(err_code);
+
+    nrf_drv_twi_enable(&m_twi_instance);
+}
+
+void sensor_init(void)
+{
+    uint32_t err;
+
+#ifdef APPLICATION_SIMULATION
+    SEGGER_RTT_printf(0, "\033[2J\033[;HAPPLICATION_SIMULATION Start %s\n\n", __TIME__);
+#else
+    SEGGER_RTT_printf(0, "\033[2J\033[;HStart %s\n\n", __TIME__);
+    twi_init();
+
+    err = bme280_init(&m_twi_instance);
+    APP_ERROR_CHECK(err);
+
+    err = bme280_set_mode(OVERSAMPLING_1, OVERSAMPLING_1, OVERSAMPLING_1, NORMAL_MODE);
+    APP_ERROR_CHECK(err);
+
+    err = bme280_get_calibration_values();
+    APP_ERROR_CHECK(err);
+#endif
+}
                                    
 /**@brief Callback function for asserts in the SoftDevice.
  *
@@ -110,27 +168,37 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
     SEGGER_RTT_printf(0, "\033[1;31m");
     SEGGER_RTT_printf(0, "\nError: 0x%#x\nLine: %d\nFile: %s\n\n", error_info->err_code, error_info->line_num, error_info->p_file_name);
     SEGGER_RTT_printf(0, "\033[0m");
-    volatile uint8_t  test = 0;
-    test=+3;
-    // On assert, the system can only recover with a reset.
+
+
+    LEDS_OFF(BSP_LED_0_MASK | BSP_LED_1_MASK | BSP_LED_2_MASK | BSP_LED_3_MASK);
+    if ((error_info->err_code & BME280_ERR_CODE_BASE) == BME280_ERR_CODE_BASE) {
+        for (uint8_t i = 0; i < 50; i++) {
+            LEDS_INVERT(BSP_LED_3_MASK);
+            nrf_delay_ms(100);
+        }
+//        nrf_drv_twi_disable(&m_twi_instance);
+        nrf_drv_twi_uninit(&m_twi_instance);
+        nrf_delay_ms(100);
+        twi_init();
+        sensor_init();
+    } else {
+
 #ifndef DEBUG
-    NVIC_SystemReset();
+        NVIC_SystemReset();
 #else
-
-#ifdef BSP_DEFINES_ONLY
-    LEDS_ON(LEDS_MASK);
-#else
-    UNUSED_VARIABLE(bsp_indication_set(BSP_INDICATE_FATAL_ERROR));
-#endif // BSP_DEFINES_ONLY
-
-    while(1);
+        for (uint8_t i = 0; i < 10; i++) {
+            LEDS_INVERT(BSP_LED_0_MASK | BSP_LED_1_MASK | BSP_LED_2_MASK | BSP_LED_3_MASK);
+            nrf_delay_ms(1000);
+        };
+        NVIC_SystemReset();
 #endif // DEBUG
+    }
 }
 
 
-void update_weather_values(weather_values_t * weather_values)
+void update_weather_values(weather_values_t * p_weather_values)
 {
-#if APPLICATION_SIMULATION
+#ifdef APPLICATION_SIMULATION
 
     static uint32_t temperature_simulated = 2000;
     static uint32_t humidity_simulated = 400000;
@@ -143,13 +211,41 @@ void update_weather_values(weather_values_t * weather_values)
     pressure_simulated += 13;
     if(pressure_simulated >= 101000) pressure_simulated = 100000;
 
-    weather_values->temperature = temperature_simulated;
-    weather_values->pressure = pressure_simulated;
-    weather_values->humidity = humidity_simulated;
+    p_weather_values->temperature = temperature_simulated;
+    p_weather_values->pressure = pressure_simulated;
+    p_weather_values->humidity = humidity_simulated;
 #else
 
-    uint32_t err_code = bme280_get_weather(weather_values);
+    uint32_t err_code = bme280_get_weather(p_weather_values);
     APP_ERROR_CHECK(err_code);
+
+    /// CHECK FOR 0 VALUE MUST BE CHANGED!
+    /// Update humidity min max values
+    if ((p_weather_values->humidity < weather_values_minmax.min.humidity) &&
+        (p_weather_values->humidity != 0))
+    {
+        weather_values_minmax.min.humidity = p_weather_values->humidity;
+    } else if (p_weather_values->humidity > weather_values_minmax.max.humidity) {
+        weather_values_minmax.max.humidity = p_weather_values->humidity;
+    }
+
+    /// Update temperature min max values
+    if ((p_weather_values->temperature < weather_values_minmax.min.temperature) &&
+        (p_weather_values->temperature != 0))
+    {
+        weather_values_minmax.min.temperature = p_weather_values->temperature;
+    } else if (p_weather_values->temperature > weather_values_minmax.max.temperature) {
+        weather_values_minmax.max.temperature = p_weather_values->temperature;
+    }
+
+    /// Update pressure min max values.
+    if ((p_weather_values->pressure < weather_values_minmax.min.pressure) &&
+        (p_weather_values->pressure != 0))
+    {
+        weather_values_minmax.min.pressure = p_weather_values->pressure;
+    } else if (p_weather_values->pressure > weather_values_minmax.max.pressure) {
+        weather_values_minmax.max.pressure = p_weather_values->pressure;
+    }
 
 #endif
 }
@@ -596,55 +692,7 @@ static void power_manage(void)
 }
 
 
-/**
- * @brief TWI events handler.
- */
-void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
-{   
-    bme280_twi_event_handler(p_event);
-}
 
-/**
- * @brief TWI initialization.
- */
-nrf_drv_twi_t twi_instance = NRF_DRV_TWI_INSTANCE(0);
-void twi_init (void)
-{
-    ret_code_t err_code;
-    
-    const nrf_drv_twi_config_t twi_config = {
-       .scl                = 4,
-       .sda                = 3,
-       .frequency          = NRF_TWI_FREQ_100K,
-       .interrupt_priority = APP_IRQ_PRIORITY_HIGH
-    };
-    
-    err_code = nrf_drv_twi_init(&twi_instance, &twi_config, twi_handler, NULL);
-    APP_ERROR_CHECK(err_code);
-    
-    nrf_drv_twi_enable(&twi_instance);
-}
-
-void sensor_init(void)
-{
-    uint32_t err;
-
-#ifdef APPLICATION_SIMULATION
-    SEGGER_RTT_printf(0, "\033[2J\033[;HAPPLICATION_SIMULATION Start %s\n\n", __TIME__);
-#else
-    SEGGER_RTT_printf(0, "\033[2J\033[;HStart %s\n\n", __TIME__);
-    twi_init();
-
-    err = bme280_init(&twi_instance);
-    APP_ERROR_CHECK(err);
-
-    err = bme280_set_mode(OVERSAMPLING_1, OVERSAMPLING_1, OVERSAMPLING_1, NORMAL_MODE);
-    APP_ERROR_CHECK(err);
-
-    err = bme280_get_calibration_values();
-    APP_ERROR_CHECK(err);
-#endif
-}
 
 void update_advertising_packet(void)
 {
@@ -692,10 +740,22 @@ int main(void)
             ble_bme280_pressure_update(&m_bme280, &weather_values.pressure);
 
             char buff[35];
-            sprintf(buff, "Temp: %0.2f\nHumi: %0.2f\nPres: %0.2f\n\n",
+            sprintf(buff, "Temp: %0.2f, Max: %0.2f, Min: %0.2f\n",
                     (float)weather_values.temperature/100,
+                    (float)weather_values_minmax.max.temperature/100,
+                    (float)weather_values_minmax.min.temperature/100);
+            SEGGER_RTT_printf(0, buff);
+
+            sprintf(buff, "Humi: %0.2f, Max: %0.2f, Min: %0.2f\n",
                     (float)weather_values.humidity/1024,
-                    (float)weather_values.pressure/100);
+                    (float)weather_values_minmax.max.humidity/1024,
+                    (float)weather_values_minmax.min.humidity/1024);
+            SEGGER_RTT_printf(0, buff);
+
+            sprintf(buff, "Pres: %0.2f, Max: %0.2f, Min: %0.2f\n",
+                    (float)weather_values.pressure/100,
+                    (float)weather_values_minmax.max.pressure/100,
+                    (float)weather_values_minmax.min.pressure/100);
             SEGGER_RTT_printf(0, buff);
 
             update_advertising_packet();

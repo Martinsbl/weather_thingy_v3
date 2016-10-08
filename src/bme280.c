@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <bme280.h>
+#include "app_error.h"
 #include "nrf_delay.h"
 #include "nrf_drv_twi.h"
 #include "bme280.h"
@@ -45,8 +46,10 @@ void bme280_twi_event_handler(const nrf_drv_twi_evt_t *evt)
             }
             break;
         case NRF_DRV_TWI_EVT_ADDRESS_NACK:
+            APP_ERROR_CHECK(BME280_ERR_ADDRESS_NACK);
             break;
         case NRF_DRV_TWI_EVT_DATA_NACK:
+            APP_ERROR_CHECK(BME280_ERR_DATA_NACK);
             break;
         default:
             break;
@@ -94,7 +97,7 @@ static uint32_t bme280_write_burst(uint8_t reg, uint8_t * p_data, uint32_t lengt
     err_code = nrf_drv_twi_xfer(m_twi_instance, &xfer_desc, 0);
     
     while((!twi_tx_done) && --timeout);  
-    if(!timeout) return NRF_ERROR_TIMEOUT;
+    if(!timeout) return BME280_ERR_TWI_TIMEOUT;
     twi_tx_done = false;
     
     return err_code;
@@ -111,7 +114,7 @@ uint32_t bme280_write_register(uint8_t reg, uint8_t data)
     if(err_code != NRF_SUCCESS) return err_code;
     
     while((!twi_tx_done) && --timeout);
-    if(!timeout) return NRF_ERROR_TIMEOUT;
+    if(!timeout) return BME280_ERR_TWI_TIMEOUT;
     
     twi_tx_done = false;
     
@@ -128,7 +131,7 @@ uint32_t bme280_read_registers(uint8_t reg, uint8_t * p_data, uint32_t length)
     if(err_code != NRF_SUCCESS) return err_code;
     
     while((!twi_tx_done) && --timeout);  
-    if(!timeout) return NRF_ERROR_TIMEOUT;
+    if(!timeout) return BME280_ERR_TWI_TIMEOUT;
     twi_tx_done = false;
     
     err_code = nrf_drv_twi_rx(m_twi_instance, BME280_ADDRESS, p_data, length);
@@ -136,7 +139,7 @@ uint32_t bme280_read_registers(uint8_t reg, uint8_t * p_data, uint32_t length)
     
     timeout = BME280_TWI_TIMEOUT;
     while((!twi_rx_done) && --timeout);
-    if(!timeout) return NRF_ERROR_TIMEOUT;
+    if(!timeout) return BME280_ERR_TWI_TIMEOUT;
     twi_rx_done = false;
     
     return err_code;
