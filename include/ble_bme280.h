@@ -58,7 +58,7 @@ void ble_bme280_service_init(ble_bme280_t * p_bme280);
  * @param[in]   p_bme280                     bme280 structure.
  * @param[in]   characteristic_value     New characteristic value.
  */
-void ble_bme280_temperature_update(ble_bme280_t *p_bme280, uint32_t * temperature_raw);
+void ble_bme280_temperature_update(ble_bme280_t *p_bme280, min_max_current_t *temperature);
 
 /**@brief Function for updating and sending new characteristic values
  *
@@ -67,7 +67,7 @@ void ble_bme280_temperature_update(ble_bme280_t *p_bme280, uint32_t * temperatur
  * @param[in]   p_bme280                     bme280 structure.
  * @param[in]   characteristic_value     New characteristic value.
  */
-void ble_bme280_humidity_update(ble_bme280_t *p_bme280, uint32_t * humidity_raw);
+void ble_bme280_humidity_update(ble_bme280_t *p_bme280, min_max_current_t *humidity);
 
 
 /**@brief Function for updating and sending new characteristic values
@@ -77,7 +77,7 @@ void ble_bme280_humidity_update(ble_bme280_t *p_bme280, uint32_t * humidity_raw)
  * @param[in]   p_bme280                     bme280 structure.
  * @param[in]   characteristic_value     New characteristic value.
  */
-void ble_bme280_pressure_update(ble_bme280_t *p_bme280, uint32_t * pressure_raw);
+void ble_bme280_pressure_update(ble_bme280_t *p_bme280, min_max_current_t *pressure);
 
 
 #endif  /* _ BME280_SERVICE_H__ */

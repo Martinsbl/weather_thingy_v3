@@ -13,9 +13,9 @@
 #include "bme280.h"
 #include "SEGGER_RTT.h"
 
-#define PRESSURE_CHAR_LEN       sizeof(uint32_t)
-#define HUMIDITY_CHAR_LEN       sizeof(uint32_t)
-#define TEMPERATURE_CHAR_LEN    sizeof(uint32_t)
+#define PRESSURE_CHAR_LEN       sizeof(min_max_current_t)
+#define HUMIDITY_CHAR_LEN       sizeof(min_max_current_t)
+#define TEMPERATURE_CHAR_LEN    sizeof(min_max_current_t)
 
 volatile bool temperature_cccd_is_enabled = false;
 volatile bool pressure_cccd_is_enabled = false;
@@ -279,12 +279,12 @@ void ble_bme280_service_init(ble_bme280_t * p_bme280)
 }
 
 
-void ble_bme280_temperature_update(ble_bme280_t *p_bme280, uint32_t * temperature_raw)
+void ble_bme280_temperature_update(ble_bme280_t *p_bme280, min_max_current_t *temperature)
 {
     // Send value if connected and notifying
     if ((p_bme280->conn_handle != BLE_CONN_HANDLE_INVALID) && (temperature_cccd_is_enabled == true))
     {
-        uint16_t               len = sizeof(temperature_raw);
+        uint16_t               len = TEMPERATURE_CHAR_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
@@ -292,7 +292,7 @@ void ble_bme280_temperature_update(ble_bme280_t *p_bme280, uint32_t * temperatur
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
-        hvx_params.p_data = (uint8_t *)temperature_raw;  
+        hvx_params.p_data = (uint8_t *)temperature;
 
         uint32_t err = sd_ble_gatts_hvx(p_bme280->conn_handle, &hvx_params);
         if(err != NRF_SUCCESS)
@@ -301,12 +301,12 @@ void ble_bme280_temperature_update(ble_bme280_t *p_bme280, uint32_t * temperatur
 }
 
 
-void ble_bme280_humidity_update(ble_bme280_t *p_bme280, uint32_t * humidity_raw)
+void ble_bme280_humidity_update(ble_bme280_t *p_bme280, min_max_current_t *humidity)
 {
     // Send value if connected and notifying
     if ((p_bme280->conn_handle != BLE_CONN_HANDLE_INVALID) && (humidity_cccd_is_enabled == true))
     {
-        uint16_t               len = sizeof(humidity_raw);
+        uint16_t               len = HUMIDITY_CHAR_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
@@ -314,7 +314,7 @@ void ble_bme280_humidity_update(ble_bme280_t *p_bme280, uint32_t * humidity_raw)
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
-        hvx_params.p_data = (uint8_t *)humidity_raw;  
+        hvx_params.p_data = (uint8_t *)humidity;
 
         uint32_t err = sd_ble_gatts_hvx(p_bme280->conn_handle, &hvx_params);
         if(err != NRF_SUCCESS)
@@ -323,12 +323,13 @@ void ble_bme280_humidity_update(ble_bme280_t *p_bme280, uint32_t * humidity_raw)
 }
 
 
-void ble_bme280_pressure_update(ble_bme280_t *p_bme280, uint32_t * pressure_raw)
+void ble_bme280_pressure_update(ble_bme280_t *p_bme280, min_max_current_t *pressure)
 {
     // Send value if connected and notifying
     if ((p_bme280->conn_handle != BLE_CONN_HANDLE_INVALID) && (pressure_cccd_is_enabled == true))
     {
-        uint16_t               len = sizeof(pressure_raw);
+        nrf_gpio_pin_clear(22);
+        uint16_t               len = PRESSURE_CHAR_LEN;
         ble_gatts_hvx_params_t hvx_params;
         memset(&hvx_params, 0, sizeof(hvx_params));
 
@@ -336,10 +337,11 @@ void ble_bme280_pressure_update(ble_bme280_t *p_bme280, uint32_t * pressure_raw)
         hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
         hvx_params.offset = 0;
         hvx_params.p_len  = &len;
-        hvx_params.p_data = (uint8_t *)pressure_raw;  
+        hvx_params.p_data = (uint8_t *)pressure;
 
         uint32_t err = sd_ble_gatts_hvx(p_bme280->conn_handle, &hvx_params);
         if(err != NRF_SUCCESS)
             SEGGER_RTT_printf(0, "Press HVX ERROR: %#x\n\n", err);
+        nrf_gpio_pin_set(22);
     }     
 }

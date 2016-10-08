@@ -15,9 +15,9 @@
 #define BME280_TWI_TIMEOUT 1500000 
 #define BME280_ADDRESS     0x76
 
-#define BME280_ERR_CODE_BASE    0x1700
-#define BME280_ERR_ADDRESS_NACK (BME280_ERR_CODE_BASE + 1)
-#define BME280_ERR_DATA_NACK    (BME280_ERR_CODE_BASE + 2)
+#define BME280_ERR_CODE_BASE        0x1700
+#define BME280_ERR_ADDRESS_NACK     (BME280_ERR_CODE_BASE + 1)
+#define BME280_ERR_DATA_NACK        (BME280_ERR_CODE_BASE + 2)
 #define BME280_ERR_TWI_TIMEOUT      (BME280_ERR_CODE_BASE + 13)
 
 
@@ -78,9 +78,9 @@ typedef enum{
 
 typedef struct
 {
-    uint32_t min;
-    uint32_t max;
     uint32_t current;
+    uint32_t max;
+    uint32_t min;
 }min_max_current_t;
 
 typedef struct 
@@ -90,13 +90,6 @@ typedef struct
     min_max_current_t temperature;
 }weather_values_t;
 
-
-//typedef struct
-//{
-//    weather_values_t current;
-//    weather_values_t max;
-//    weather_values_t min;
-//}weather_values_minmax_t;
 
 
 /**@brief Event handler used to pass TWI events from main application to the BME280 library

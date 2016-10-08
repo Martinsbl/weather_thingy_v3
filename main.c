@@ -244,11 +244,13 @@ void timer_timeout_handler_temperature(void * p_context)
 }
 
 
-
+#ifdef NRF51
 void timer_timeout_handler_battery(void * p_context)
 {
     start_battery_update = true;
 }
+
+#endif
 
 
 /**@brief Function for the Timer initialization.
@@ -265,8 +267,10 @@ static void timers_init(void)
     err_code = app_timer_create(&m_timer_id_temperature, APP_TIMER_MODE_REPEATED, timer_timeout_handler_temperature);
     APP_ERROR_CHECK(err_code);
 
+#ifdef NRF51
     err_code = app_timer_create(&m_timer_id_battery, APP_TIMER_MODE_REPEATED, timer_timeout_handler_battery);
     APP_ERROR_CHECK(err_code);
+#endif
 
 }
 
@@ -721,9 +725,9 @@ int main(void)
         if(start_weather_update == true)
         {
             update_weather_values(&weather_values);
-            ble_bme280_temperature_update(&m_bme280, &weather_values.temperature.current);
-            ble_bme280_humidity_update(&m_bme280, &weather_values.humidity.current);
-            ble_bme280_pressure_update(&m_bme280, &weather_values.pressure.current);
+            ble_bme280_temperature_update(&m_bme280, &weather_values.temperature);
+            ble_bme280_humidity_update(&m_bme280, &weather_values.humidity);
+            ble_bme280_pressure_update(&m_bme280, &weather_values.pressure);
 
             char buff[50];
             SEGGER_RTT_WriteString(0, "\033[2J\033[;H");
@@ -751,8 +755,10 @@ int main(void)
         }
 
         if (start_battery_update == true) {
+#ifdef NRF51
             battery_level_measure_start();
             start_battery_update = false;
+#ifdef NRF51
         }
 
         power_manage();
