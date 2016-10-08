@@ -206,8 +206,22 @@ uint32_t bme280_get_hum(uint32_t * humidity_u32)
     return err;   
 }
 
+void get_min_max(min_max_current_t * min_max_value)
+{
+    uint32_t min = min_max_value->min;
+    uint32_t max = min_max_value->max;
+    uint32_t current = min_max_value->current;
 
-uint32_t bme280_get_weather(weather_values_t * weather_values)
+    if (current < min) {
+        min_max_value->min = current;
+    }
+    if (current > max) {
+        min_max_value->max = current;
+    }
+
+}
+
+uint32_t bme280_get_weather(weather_values_t * p_weather_values)
 {
     uint32_t err;
     uint8_t raw_values[8] = {0};
@@ -216,15 +230,19 @@ uint32_t bme280_get_weather(weather_values_t * weather_values)
     err = bme280_read_registers(BME_REG_PRESS_MSB, raw_values, sizeof(raw_values));
 
     /// Sort raw data
-    weather_values_t raw_weather_data;
-    raw_weather_data.pressure = ((raw_values[0] << 16) | (raw_values[1] << 8) | raw_values[2]) >> 4;
-    raw_weather_data.temperature = ((raw_values[3] << 16) | (raw_values[4] << 8) | raw_values[5]) >> 4;
-    raw_weather_data.humidity = (raw_values[6] << 8) | raw_values[7];
+    int32_t raw_humidity = (raw_values[6] << 8) | raw_values[7];
+    int32_t raw_pressure = ((raw_values[0] << 16) | (raw_values[1] << 8) | raw_values[2]) >> 4;
+    int32_t raw_temperature = ((raw_values[3] << 16) | (raw_values[4] << 8) | raw_values[5]) >> 4;
 
     /// Calibrate values
-    weather_values->pressure    = bme280_calibrate_pressure(raw_weather_data.pressure);
-    weather_values->temperature = bme280_calibrate_temperature(raw_weather_data.temperature);
-    weather_values->humidity = bme280_calibrate_humidity(raw_weather_data.humidity);
+    p_weather_values->humidity.current = bme280_calibrate_humidity(raw_humidity);
+    p_weather_values->pressure.current    = bme280_calibrate_pressure(raw_pressure);
+    p_weather_values->temperature.current = bme280_calibrate_temperature(raw_temperature);
+
+    /// Update humidity min max values
+    get_min_max(&p_weather_values->humidity);
+    get_min_max(&p_weather_values->pressure);
+    get_min_max(&p_weather_values->temperature);
 
     return err;   
 }

@@ -90,7 +90,6 @@ ble_bme280_t m_bme280;
 ble_battery_t m_battery;
 
 weather_values_t weather_values;
-weather_values_minmax_t weather_values_minmax = {0};
 ble_advdata_t advdata;
 
 static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
@@ -125,6 +124,33 @@ void twi_init (void)
     nrf_drv_twi_enable(&m_twi_instance);
 }
 
+void update_weather_values(weather_values_t * p_weather_values)
+{
+#ifdef APPLICATION_SIMULATION
+
+    static uint32_t temperature_simulated = 2000;
+    static uint32_t humidity_simulated = 400000;
+    static uint32_t pressure_simulated = 100000;
+
+    temperature_simulated += 17;
+    if(temperature_simulated >= 2800) temperature_simulated = 2000;
+    humidity_simulated += 37;
+    if(humidity_simulated >= 500000) humidity_simulated = 400000;
+    pressure_simulated += 13;
+    if(pressure_simulated >= 101000) pressure_simulated = 100000;
+
+    p_weather_values->temperature = temperature_simulated;
+    p_weather_values->pressure = pressure_simulated;
+    p_weather_values->humidity = humidity_simulated;
+#else
+
+    uint32_t err_code = bme280_get_weather(p_weather_values);
+    APP_ERROR_CHECK(err_code);
+
+#endif
+}
+
+
 void sensor_init(void)
 {
     uint32_t err;
@@ -144,6 +170,19 @@ void sensor_init(void)
     err = bme280_get_calibration_values();
     APP_ERROR_CHECK(err);
 #endif
+
+    /// Get initial samples
+    update_weather_values(&weather_values);
+    /// Delay and re-update seem to help with correct initial pressure value
+    nrf_delay_ms(250);
+    update_weather_values(&weather_values);
+    /// Override min max values since it is the first set of measurements.
+    weather_values.humidity.max = weather_values.humidity.current;
+    weather_values.humidity.min = weather_values.humidity.current;
+    weather_values.pressure.max = weather_values.pressure.current;
+    weather_values.pressure.min = weather_values.pressure.current;
+    weather_values.temperature.max = weather_values.temperature.current;
+    weather_values.temperature.min = weather_values.temperature.current;
 }
                                    
 /**@brief Callback function for asserts in the SoftDevice.
@@ -196,59 +235,6 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 }
 
 
-void update_weather_values(weather_values_t * p_weather_values)
-{
-#ifdef APPLICATION_SIMULATION
-
-    static uint32_t temperature_simulated = 2000;
-    static uint32_t humidity_simulated = 400000;
-    static uint32_t pressure_simulated = 100000;
-
-    temperature_simulated += 17;
-    if(temperature_simulated >= 2800) temperature_simulated = 2000;
-    humidity_simulated += 37;
-    if(humidity_simulated >= 500000) humidity_simulated = 400000;
-    pressure_simulated += 13;
-    if(pressure_simulated >= 101000) pressure_simulated = 100000;
-
-    p_weather_values->temperature = temperature_simulated;
-    p_weather_values->pressure = pressure_simulated;
-    p_weather_values->humidity = humidity_simulated;
-#else
-
-    uint32_t err_code = bme280_get_weather(p_weather_values);
-    APP_ERROR_CHECK(err_code);
-
-    /// CHECK FOR 0 VALUE MUST BE CHANGED!
-    /// Update humidity min max values
-    if ((p_weather_values->humidity < weather_values_minmax.min.humidity) &&
-        (p_weather_values->humidity != 0))
-    {
-        weather_values_minmax.min.humidity = p_weather_values->humidity;
-    } else if (p_weather_values->humidity > weather_values_minmax.max.humidity) {
-        weather_values_minmax.max.humidity = p_weather_values->humidity;
-    }
-
-    /// Update temperature min max values
-    if ((p_weather_values->temperature < weather_values_minmax.min.temperature) &&
-        (p_weather_values->temperature != 0))
-    {
-        weather_values_minmax.min.temperature = p_weather_values->temperature;
-    } else if (p_weather_values->temperature > weather_values_minmax.max.temperature) {
-        weather_values_minmax.max.temperature = p_weather_values->temperature;
-    }
-
-    /// Update pressure min max values.
-    if ((p_weather_values->pressure < weather_values_minmax.min.pressure) &&
-        (p_weather_values->pressure != 0))
-    {
-        weather_values_minmax.min.pressure = p_weather_values->pressure;
-    } else if (p_weather_values->pressure > weather_values_minmax.max.pressure) {
-        weather_values_minmax.max.pressure = p_weather_values->pressure;
-    }
-
-#endif
-}
 
 /// //
 /// \param p_context: not important
@@ -709,7 +695,7 @@ void update_advertising_packet(void)
  */
 int main(void)
 {
-    uint32_t err_code, err;
+    uint32_t err_code;
     bool erase_bonds;
 
     // Initialize.
@@ -735,27 +721,28 @@ int main(void)
         if(start_weather_update == true)
         {
             update_weather_values(&weather_values);
-            ble_bme280_temperature_update(&m_bme280, &weather_values.temperature);
-            ble_bme280_humidity_update(&m_bme280, &weather_values.humidity);
-            ble_bme280_pressure_update(&m_bme280, &weather_values.pressure);
+            ble_bme280_temperature_update(&m_bme280, &weather_values.temperature.current);
+            ble_bme280_humidity_update(&m_bme280, &weather_values.humidity.current);
+            ble_bme280_pressure_update(&m_bme280, &weather_values.pressure.current);
 
-            char buff[35];
-            sprintf(buff, "Temp: %0.2f, Max: %0.2f, Min: %0.2f\n",
-                    (float)weather_values.temperature/100,
-                    (float)weather_values_minmax.max.temperature/100,
-                    (float)weather_values_minmax.min.temperature/100);
+            char buff[50];
+            SEGGER_RTT_WriteString(0, "\033[2J\033[;H");
+            sprintf(buff, "\nTemp: %0.2f\t\t, Max: %0.2f,\t Min: %0.2f\n",
+                    (float)weather_values.temperature.current/100,
+                    (float)weather_values.temperature.max/100,
+                    (float)weather_values.temperature.min/100);
             SEGGER_RTT_printf(0, buff);
 
-            sprintf(buff, "Humi: %0.2f, Max: %0.2f, Min: %0.2f\n",
-                    (float)weather_values.humidity/1024,
-                    (float)weather_values_minmax.max.humidity/1024,
-                    (float)weather_values_minmax.min.humidity/1024);
+            sprintf(buff, "Humi: %0.2f\t\t, Max: %0.2f,\t Min: %0.2f\n",
+                    (float)weather_values.humidity.current/1024,
+                    (float)weather_values.humidity.max/1024,
+                    (float)weather_values.humidity.min/1024);
             SEGGER_RTT_printf(0, buff);
 
-            sprintf(buff, "Pres: %0.2f, Max: %0.2f, Min: %0.2f\n",
-                    (float)weather_values.pressure/100,
-                    (float)weather_values_minmax.max.pressure/100,
-                    (float)weather_values_minmax.min.pressure/100);
+            sprintf(buff, "Pres: %0.2f\t, Max: %0.2f,\t Min: %0.2f\n\n",
+                    (float)weather_values.pressure.current/100,
+                    (float)weather_values.pressure.max/100,
+                    (float)weather_values.pressure.min/100);
             SEGGER_RTT_printf(0, buff);
 
             update_advertising_packet();

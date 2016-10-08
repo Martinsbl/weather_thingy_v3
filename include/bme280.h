@@ -76,21 +76,27 @@ typedef enum{
 	OVERSAMPLING_16,
 }oversampling_t;
 
+typedef struct
+{
+    uint32_t min;
+    uint32_t max;
+    uint32_t current;
+}min_max_current_t;
 
 typedef struct 
 {
-    uint32_t humidity;
-    uint32_t pressure;
-    uint32_t temperature;
+    min_max_current_t humidity;
+    min_max_current_t pressure;
+    min_max_current_t temperature;
 }weather_values_t;
 
 
-typedef struct
-{
-    weather_values_t current;
-    weather_values_t max;
-    weather_values_t min;
-}weather_values_minmax_t;
+//typedef struct
+//{
+//    weather_values_t current;
+//    weather_values_t max;
+//    weather_values_t min;
+//}weather_values_minmax_t;
 
 
 /**@brief Event handler used to pass TWI events from main application to the BME280 library
