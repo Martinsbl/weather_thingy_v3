@@ -26,7 +26,6 @@ void bme280_twi_event_handler(const nrf_drv_twi_evt_t *evt)
     switch(evt->type)
     {
         case NRF_DRV_TWI_EVT_DONE:
-            nrf_gpio_pin_toggle(24);
             switch(evt->xfer_desc.type)
             {
                 case NRF_DRV_TWI_XFER_TX:

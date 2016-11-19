@@ -21,12 +21,15 @@ if (NRF_VERSION MATCHES NRF51)
     include_directories(
             config/ble_app_template_s130_pca10028
             ${SDK_ROOT_FOLDER}/components/softdevice/s130/headers
-            ${SDK_ROOT_FOLDER}/components/softdevice/s130/headers/nrf51)
+            ${SDK_ROOT_FOLDER}/components/softdevice/s130/headers/nrf51
+            ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc)
 
     # Include nRF51 specific source files
     set(SOC_SOURCE_FILES
             ${SDK_ROOT_FOLDER}/components/toolchain/gcc/gcc_startup_nrf51.s
-            ${SDK_ROOT_FOLDER}/components/toolchain/system_nrf51.c)
+            ${SDK_ROOT_FOLDER}/components/toolchain/system_nrf51.c
+            ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c
+            src/ble_battery.c)
 
     set(SOC_CMAKE_C_FLAGS -mcpu=cortex-m0)
     set(SOC_EXE_LINKER_FLAGS -mcpu=cortex-m0)
@@ -127,7 +130,6 @@ include_directories(
         ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler
         ${SDK_ROOT_FOLDER}/examples/../bsp
         ${SDK_ROOT_FOLDER}/external/segger_rtt
-        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc
 )
 
 
@@ -137,7 +139,6 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/components/drivers_nrf/delay/nrf_delay.c
         src/ble_bme280.c
         src/bme280.c
-        src/ble_battery.c
         debug/msgs.c
         src/ble_cts_c.c
         ${SDK_ROOT_FOLDER}/examples/bsp/bsp.c
@@ -168,7 +169,6 @@ set(COMMON_SOURCE_FILES
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT.c
         ${SDK_ROOT_FOLDER}/external/segger_rtt/SEGGER_RTT_printf.c
         ${SDK_ROOT_FOLDER}/components/softdevice/common/softdevice_handler/softdevice_handler.c
-        ${SDK_ROOT_FOLDER}/components/drivers_nrf/adc/nrf_drv_adc.c
         )
 
 

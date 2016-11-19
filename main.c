@@ -77,7 +77,7 @@ static uint16_t                          m_conn_handle = BLE_CONN_HANDLE_INVALID
 nrf_drv_twi_t m_twi_instance = NRF_DRV_TWI_INSTANCE(0);
 //#define APPLICATION_SIMULATION
 
-#define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(3000, APP_TIMER_PRESCALER)
+#define TIMER_INTERVAL_TEMPERATURE  APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER)
 #define TIMER_INTERVAL_BATTERY      APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER)
 
 APP_TIMER_DEF(m_timer_id_temperature);
@@ -89,7 +89,7 @@ volatile bool start_battery_update = false;
 ble_bme280_t m_bme280;
 ble_battery_t m_battery;
 
-weather_values_t weather_values;
+weather_values_t weather_values = {0};
 ble_advdata_t advdata;
 
 static ble_uuid_t m_adv_uuids[] = {{BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE}}; /**< Universally unique service identifiers. */
@@ -105,15 +105,15 @@ void twi_handler(nrf_drv_twi_evt_t const * p_event, void * p_context)
 }
 
 /**
- * @brief TWI initialization.
+ * @brief TWI initialization
  */
 void twi_init (void)
 {
     ret_code_t err_code;
 
     const nrf_drv_twi_config_t twi_config = {
-            .scl                = 4,
-            .sda                = 3,
+            .scl                = 2,
+            .sda                = 1,
             .frequency          = NRF_TWI_FREQ_100K,
             .interrupt_priority = APP_IRQ_PRIORITY_HIGH
     };
@@ -171,7 +171,7 @@ void sensor_init(void)
     APP_ERROR_CHECK(err);
 #endif
 
-    /// Get initial samples
+    /// Get initial samples.
     update_weather_values(&weather_values);
     /// Delay and re-update seem to help with correct initial pressure value
     nrf_delay_ms(250);
@@ -311,7 +311,9 @@ static void gap_params_init(void)
 static void services_init(void)
 {
     ble_bme280_service_init(&m_bme280);
+#ifdef NRF51
     ble_battery_service_init(&m_battery);
+#endif
 }
 
 
@@ -380,8 +382,10 @@ static void application_timers_start(void)
     err_code = app_timer_start(m_timer_id_temperature, TIMER_INTERVAL_TEMPERATURE, NULL);
     APP_ERROR_CHECK(err_code);
 
+#ifdef NRF51
     err_code = app_timer_start(m_timer_id_battery, TIMER_INTERVAL_BATTERY, NULL);
     APP_ERROR_CHECK(err_code);
+#endif
 }
 
 
@@ -482,7 +486,9 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
     ble_bme280_on_ble_evt(&m_bme280, p_ble_evt);
+#ifdef NRF51
     ble_battery_on_ble_evt(&m_battery, p_ble_evt);
+#endif
 }
 
 
@@ -508,7 +514,11 @@ static void ble_stack_init(void)
 {
     uint32_t err_code;
     
-    nrf_clock_lf_cfg_t clock_lf_cfg = NRF_CLOCK_LFCLKSRC;
+    nrf_clock_lf_cfg_t clock_lf_cfg =
+            {.source       = NRF_CLOCK_LF_SRC_RC,            \
+            .rc_ctiv       = 20,                                \
+            .rc_temp_ctiv  = 1,                                \
+            .xtal_accuracy = 0};
     
     // Initialize the SoftDevice handler module.
     SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, NULL);
@@ -627,6 +637,14 @@ static void device_manager_init(bool erase_bonds)
     APP_ERROR_CHECK(err_code);
 }
 
+static void weath_values_to_manuf_data(uint8_t * manuf_data, weather_values_t weather_values)
+{
+    memcpy(&manuf_data[0], &weather_values.temperature.current, 4);
+    memcpy(&manuf_data[4], &weather_values.humidity.current, 4);
+    memcpy(&manuf_data[8], &weather_values.pressure.current, 4);
+
+}
+
 
 /**@brief Function for initializing the Advertising functionality.
  */
@@ -634,14 +652,22 @@ static void advertising_init(void)
 {
     uint32_t      err_code;
 
-    // Build advertising data struct to pass into @ref ble_advertising_init.
+    // Build advertising data struct to pass into @ref ble_advertising_init
     memset(&advdata, 0, sizeof(advdata));
 
     advdata.name_type               = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance      = true;
+    advdata.include_appearance      = false;
     advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
     advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
     advdata.uuids_complete.p_uuids  = m_adv_uuids;
+
+    ble_advdata_manuf_data_t p_manuf_data;
+    uint8_t data[12];
+    weath_values_to_manuf_data(data, weather_values);
+    p_manuf_data.company_identifier = 0x0059;
+    p_manuf_data.data.size = 12;
+    p_manuf_data.data.p_data = data;
+    advdata.p_manuf_specific_data = &p_manuf_data;
 
     ble_adv_modes_config_t options = {0};
     options.ble_adv_fast_enabled  = BLE_ADV_FAST_ENABLED;
@@ -687,15 +713,17 @@ static void power_manage(void)
 void update_advertising_packet(void)
 {
     ble_advdata_manuf_data_t p_manuf_data;
-    p_manuf_data.company_identifier = 0xFFFF;
-    p_manuf_data.data.size = sizeof(weather_values_t);
-    p_manuf_data.data.p_data = (uint8_t *)&weather_values;
+    uint8_t data[12];
+    weath_values_to_manuf_data(data, weather_values);
+    p_manuf_data.company_identifier = 0x0059;
+    p_manuf_data.data.size = 12;
+    p_manuf_data.data.p_data = data;
     advdata.p_manuf_specific_data = &p_manuf_data;
     ble_advdata_set(&advdata, NULL);
 
 }
 
-/**@brief Function for application main entry.
+/**@brief Function for application main entry
  */
 int main(void)
 {
@@ -705,6 +733,7 @@ int main(void)
     // Initialize.
     timers_init();
     buttons_leds_init(&erase_bonds);
+
     ble_stack_init();
     device_manager_init(erase_bonds);
     gap_params_init();
@@ -719,7 +748,7 @@ int main(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
-    // Enter main loop.
+    // Enter main loop
     for (;;)
     {
         if(start_weather_update == true)
@@ -758,7 +787,7 @@ int main(void)
 #ifdef NRF51
             battery_level_measure_start();
             start_battery_update = false;
-#ifdef NRF51
+#endif
         }
 
         power_manage();
