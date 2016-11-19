@@ -13,7 +13,6 @@
 #include "ble_srv_common.h"
 #include "app_error.h"
 #include "ble_battery.h"
-#include "SEGGER_RTT.h"
 
 #define BATTERY_CHAR_MAX_LEN    sizeof(uint8_t)
 
@@ -29,8 +28,6 @@ static uint8_t battery_level_convert(nrf_adc_value_t adc_value){
                                 296; // Ref sel VBG = 1.2 V, Input scale 1/3, * 1000 for mV, + diode drop on dev kit.
 
     uint8_t battery_level_percent = battery_level_in_percent(input_millivolts);
-
-    SEGGER_RTT_printf(0, "ADC: %d, mV: %d, bat level: %d\n", adc_value, input_millivolts, battery_level_percent);
     return battery_level_percent;
 }
 
@@ -45,6 +42,7 @@ ret_code_t battery_level_measure_start()
     }
 
     nrf_drv_adc_sample();
+	return 0;
 }
 
 void adc_event_handler(nrf_drv_adc_evt_t const * p_event)
@@ -225,7 +223,7 @@ void ble_battery_level_update(ble_battery_t *p_battery, uint8_t current_battery_
             hvx_params.p_data = &current_battery_level;
             uint32_t err = sd_ble_gatts_hvx(p_battery->conn_handle, &hvx_params);
             if(err != NRF_SUCCESS)
-                SEGGER_RTT_printf(0, "Temp HVX ERROR: %#x\n\n", err);
+                ;
         }
     }
     previous_battery_level = current_battery_level;

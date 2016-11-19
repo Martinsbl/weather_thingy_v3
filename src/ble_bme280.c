@@ -11,7 +11,6 @@
 #include "ble_srv_common.h"
 #include "app_error.h"
 #include "bme280.h"
-#include "SEGGER_RTT.h"
 
 #define PRESSURE_CHAR_LEN       sizeof(min_max_current_t)
 #define HUMIDITY_CHAR_LEN       sizeof(min_max_current_t)
@@ -296,7 +295,7 @@ void ble_bme280_temperature_update(ble_bme280_t *p_bme280, min_max_current_t *te
 
         uint32_t err = sd_ble_gatts_hvx(p_bme280->conn_handle, &hvx_params);
         if(err != NRF_SUCCESS)
-            SEGGER_RTT_printf(0, "Temp HVX ERROR: %#x\n\n", err);
+			;
     } 
 }
 
@@ -318,7 +317,7 @@ void ble_bme280_humidity_update(ble_bme280_t *p_bme280, min_max_current_t *humid
 
         uint32_t err = sd_ble_gatts_hvx(p_bme280->conn_handle, &hvx_params);
         if(err != NRF_SUCCESS)
-            SEGGER_RTT_printf(0, "Hum HVX ERROR: %#x\n\n", err);
+			;
     }     
 }
 
@@ -341,7 +340,6 @@ void ble_bme280_pressure_update(ble_bme280_t *p_bme280, min_max_current_t *press
 
         uint32_t err = sd_ble_gatts_hvx(p_bme280->conn_handle, &hvx_params);
         if(err != NRF_SUCCESS)
-            SEGGER_RTT_printf(0, "Press HVX ERROR: %#x\n\n", err);
-        nrf_gpio_pin_set(22);
+            ;
     }     
 }
